@@ -318,7 +318,7 @@ boardStrokes: [
 |---|-------|-------------|--------|----------|---------|----------|
 | 1 | Scaffold | template-react-ts, strip demo, portrait lock, folder skeleton, vitest wired | complete | - | - | [plan](../plans/completed/phase-1-scaffold.plan.md) · [report](../reports/phase-1-scaffold-report.md) |
 | 2 | Engine | types/board/rules pure TS + full test suite (T1–T7+) | complete | with 3 | 1 | [plan](../plans/completed/phase-2-engine.plan.md) · [report](../reports/phase-2-engine-report.md) |
-| 3 | Board render | BoardScene draws well board statically from BoardDef | pending | with 2 | 1 | [phase-3-board-render](../plans/phase-3-board-render.plan.md) |
+| 3 | Board render | BoardScene draws well board statically from BoardDef | complete | with 2 | 1 | [plan](../plans/completed/phase-3-board-render.plan.md) · [report](../reports/phase-3-board-render-report.md) |
 | 4 | Interaction & flow | taps, selection highlights, tweens, HUD, trap/win overlay, restart | pending | - | 2, 3 | - |
 | 5 | Shell & polish | mode-select menu via registry, asset manifest stub, theme pass | pending | - | 4 | - |
 
