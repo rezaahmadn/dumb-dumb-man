@@ -1,3 +1,5 @@
+import type { PlayerId } from '../engine/types';
+
 export const THEME = {
     background: 0x111418,
     boardLine: 0xe8e2d0,
@@ -7,5 +9,9 @@ export const THEME = {
     pebbleRadius: 34,
     vertexRadius: 12,
     tapRadius: 48,
-    moveTweenMs: 200
+    moveTweenMs: 200,
+    highlightColor: 0xffffff
 } as const;
+
+export const PLAYER_NAME: Record<PlayerId, string> = { 1: 'Red', 2: 'Blue' };
+export const PLAYER_COLOR_CSS: Record<PlayerId, string> = { 1: '#e53935', 2: '#1e88e5' };

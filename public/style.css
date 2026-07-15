@@ -20,3 +20,65 @@ body,
     width: 100%;
     height: 100%;
 }
+
+/* Mirrors the canvas's 9:16 Scale.FIT box in pure CSS so HUD text/overlay
+   align with the pillar at any window size. pointer-events: none here lets
+   board taps pass through to the canvas; only .hud-overlay re-enables it. */
+#hud-layer {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+}
+
+#hud-box {
+    position: relative;
+    height: 100%;
+    aspect-ratio: 9 / 16;
+    max-width: 100%;
+    color: #e8e2d0;
+}
+
+.hud-turn {
+    position: absolute;
+    top: 6%;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 600;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+}
+
+.hud-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    background: rgba(17, 20, 24, 0.75);
+    pointer-events: auto;
+}
+
+.hud-overlay-text {
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.hud-button {
+    padding: 12px 28px;
+    font-size: 1.1rem;
+    background: #e8e2d0;
+    color: #111418;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.hud-button:hover {
+    background: #ffffff;
+}
