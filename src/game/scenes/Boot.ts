@@ -9,6 +9,7 @@ export class Boot extends Scene
 
     create ()
     {
-        this.scene.start('BoardScene');
+        const modeId = (this.registry.get('modeId') as string | undefined) ?? 'well';
+        this.scene.start('BoardScene', { modeId });
     }
 }

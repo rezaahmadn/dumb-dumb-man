@@ -82,3 +82,81 @@ body,
 .hud-button:hover {
     background: #ffffff;
 }
+
+/* Menu button lives inside #hud-layer (pointer-events: none), so it must
+   re-enable pointer-events to stay clickable. Top-left, clear of vertices. */
+.hud-menu-button {
+    position: absolute;
+    top: 4%;
+    left: 6%;
+    padding: 6px 14px;
+    font-size: 0.9rem;
+    background: transparent;
+    color: #e8e2d0;
+    border: 1px solid rgba(232, 226, 208, 0.5);
+    border-radius: 6px;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.hud-overlay-actions {
+    display: flex;
+    gap: 16px;
+}
+
+.hud-button-secondary {
+    background: transparent;
+    color: #e8e2d0;
+    border: 1px solid #e8e2d0;
+}
+
+/* Menu screen mirrors the game's 9:16 pillar so it reads the same on desktop. */
+#menu-layer {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #111418;
+}
+
+#menu-box {
+    width: 100%;
+    height: 100%;
+    max-width: 100vh;
+    aspect-ratio: 9 / 16;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 48px;
+    color: #e8e2d0;
+}
+
+.menu-title {
+    font-size: 2.4rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.menu-modes {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 70%;
+}
+
+.menu-mode-button {
+    padding: 18px;
+    font-size: 1.3rem;
+    background: transparent;
+    color: #e8e2d0;
+    border: 2px solid #e8e2d0;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.menu-mode-button:hover {
+    background: #e8e2d0;
+    color: #111418;
+}

@@ -320,7 +320,7 @@ boardStrokes: [
 | 2 | Engine | types/board/rules pure TS + full test suite (T1–T7+) | complete | with 3 | 1 | [plan](../plans/completed/phase-2-engine.plan.md) · [report](../reports/phase-2-engine-report.md) |
 | 3 | Board render | BoardScene draws well board statically from BoardDef | complete | with 2 | 1 | [plan](../plans/completed/phase-3-board-render.plan.md) · [report](../reports/phase-3-board-render-report.md) |
 | 4 | Interaction & flow | taps, selection highlights, tweens, HUD, trap/win overlay, restart | complete | - | 2, 3 | [plan](../plans/completed/phase-4-interaction-flow.plan.md) · [report](../reports/phase-4-interaction-flow-report.md) |
-| 5 | Shell & polish | mode-select menu via registry, asset manifest stub, theme pass | pending | - | 4 | - |
+| 5 | Shell & polish | mode-select menu via registry, asset manifest stub, theme pass | complete | - | 4 | [plan](../plans/completed/phase-5-shell-polish.plan.md) · [report](../reports/phase-5-shell-polish-report.md) |
 
 ### Phase Details
 

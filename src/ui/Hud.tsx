@@ -5,6 +5,7 @@ interface HudProps
 {
     snapshot: HudSnapshot | null;
     onRestart: () => void;
+    onMenu: () => void;
 }
 
 function turnText (snapshot: HudSnapshot): string
@@ -19,7 +20,7 @@ function turnText (snapshot: HudSnapshot): string
     return `${name}: move a pebble`;
 }
 
-export function Hud ({ snapshot, onRestart }: HudProps)
+export function Hud ({ snapshot, onRestart, onMenu }: HudProps)
 {
     if (!snapshot)
     {
@@ -32,6 +33,9 @@ export function Hud ({ snapshot, onRestart }: HudProps)
     return (
         <div id="hud-layer">
             <div id="hud-box">
+                <button type="button" className="hud-menu-button" onClick={onMenu}>
+                    Menu
+                </button>
                 {!isOver && (
                     <div className="hud-turn" style={{ color: PLAYER_COLOR_CSS[game.current] }}>
                         {turnText(snapshot)}
@@ -42,9 +46,14 @@ export function Hud ({ snapshot, onRestart }: HudProps)
                         <div className="hud-overlay-text" style={{ color: PLAYER_COLOR_CSS[game.winner] }}>
                             {PLAYER_NAME[game.winner]} wins!
                         </div>
-                        <button type="button" className="hud-button" onClick={onRestart}>
-                            Play again
-                        </button>
+                        <div className="hud-overlay-actions">
+                            <button type="button" className="hud-button" onClick={onRestart}>
+                                Play again
+                            </button>
+                            <button type="button" className="hud-button hud-button-secondary" onClick={onMenu}>
+                                Menu
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>

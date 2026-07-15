@@ -21,9 +21,11 @@ const config: Phaser.Types.Core.GameConfig = {
     ]
 };
 
-const StartGame = (parent: string) => {
+const StartGame = (parent: string, modeId = 'well') => {
 
-    return new Game({ ...config, parent });
+    const game = new Game({ ...config, parent });
+    game.registry.set('modeId', modeId);
+    return game;
 
 }
 
