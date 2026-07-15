@@ -8,7 +8,7 @@ export const THEME = {
     pebble: { 1: 0xe53935, 2: 0x1e88e5 },
     pebbleRadius: 34,
     vertexRadius: 12,
-    tapRadius: 48,
+    tapRadius: 120,
     moveTweenMs: 200,
     highlightColor: 0xffffff
 } as const;

@@ -89,6 +89,7 @@ export class BoardScene extends Scene
         this.legalDestinations = new Set();
         this.renderHighlights();
         this.state = initialState(this.mode.engine, this.mode.id);
+        this.refreshDraggable();
         EventBus.emit('game-state-changed', this.getSnapshot());
     }
 
@@ -140,6 +141,18 @@ export class BoardScene extends Scene
                 new Geom.Circle(THEME.tapRadius, THEME.tapRadius, THEME.tapRadius),
                 Geom.Circle.Contains
             );
+            //  Direct property set — setInteractive({ dropZone: true }) is a
+            //  silent no-op on an object that already has .input (verified
+            //  against Phaser 4.0.0 source: the config-object's dropZone key
+            //  is read only inside setHitArea(), which enable() skips
+            //  whenever .input already exists — exactly this case, since
+            //  setInteractive() was just called above). This does NOT
+            //  disable ordinary tap behavior — dropZone is additive.
+            if (hit.input)
+            {
+                hit.input.dropZone = true;
+            }
+            hit.setData('vertexId', v.id);
             hit.on('pointerdown', () => this.onVertexTap(v.id));
         }
     }
@@ -204,6 +217,76 @@ export class BoardScene extends Scene
         this.renderHighlights();
     }
 
+    //  Wired once per pebble, at creation. Drag is a second INPUT METHOD
+    //  feeding the same onVertexTap state machine a tap already drives —
+    //  never a second decision system.
+    //
+    //  didDrag distinguishes a real cancelled drag from a plain tap: dragend
+    //  fires on EVERY press/release pair (including zero-movement taps, with
+    //  dropped:false there too — verified against Phaser 4.0.0 source,
+    //  InputPlugin.js processDragUpEvent), so dropped alone can't tell them
+    //  apart. didDrag is set ONLY inside 'drag', which fires ONLY after real
+    //  pointer movement.
+    private wirePebbleEvents (pebble: Phaser.GameObjects.Arc)
+    {
+        let didDrag = false;
+
+        pebble.on('pointerdown', () =>
+        {
+            didDrag = false;
+            this.onVertexTap(pebble.getData('vertexId'));
+        });
+
+        pebble.on('drag', (_pointer: Phaser.Input.Pointer, dragX: number, dragY: number) =>
+        {
+            didDrag = true;
+            pebble.x = dragX;
+            pebble.y = dragY;
+        });
+
+        pebble.on('drop', (_pointer: Phaser.Input.Pointer, dropZone: Phaser.GameObjects.GameObject) =>
+        {
+            const originVertexId = pebble.getData('vertexId');
+            const targetVertexId = dropZone.getData('vertexId');
+            this.onVertexTap(targetVertexId);
+            //  onVertexTap only relocates the pebble in pebbleObjects on a
+            //  LEGAL move; if it's still registered at its own origin,
+            //  nothing moved (illegal target) — snap the VISUAL position
+            //  back. syncPebbles' own tween already handles the legal-move
+            //  case, so no `else`.
+            if (this.pebbleObjects[originVertexId] === pebble)
+            {
+                this.snapPebbleToVertex(pebble, originVertexId);
+            }
+        });
+
+        pebble.on('dragend', (_pointer: Phaser.Input.Pointer, _dragX: number, _dragY: number, dropped: boolean) =>
+        {
+            //  Fires on EVERY press/release, including a plain tap
+            //  (dropped=false there too) — didDrag distinguishes "real drag
+            //  released off any zone" from "just a tap". A drop that landed
+            //  on SOME zone is fully handled by 'drop' above; don't
+            //  double-handle it here.
+            if (didDrag && !dropped)
+            {
+                this.snapPebbleToVertex(pebble, pebble.getData('vertexId'));
+                this.clearSelection();
+            }
+        });
+    }
+
+    private snapPebbleToVertex (pebble: Phaser.GameObjects.Arc, vertexId: VertexId)
+    {
+        const pos = this.vertexPos[vertexId];
+        this.tweens.add({
+            targets: pebble,
+            x: pos.x,
+            y: pos.y,
+            duration: THEME.moveTweenMs,
+            ease: 'Quad.easeInOut'
+        });
+    }
+
     //  Must run BEFORE this.state is reassigned in applyAndSync: it reads
     //  this.state.current for the mover's color/identity, and for a 'move'
     //  it looks up the pebble object still sitting at `from`.
@@ -215,6 +298,19 @@ export class BoardScene extends Scene
             const pos = this.vertexPos[move.to];
             const circle = this.add.circle(pos.x, pos.y, THEME.pebbleRadius, THEME.pebble[player]);
             circle.setDepth(1);
+            circle.setData('vertexId', move.to);
+            //  Local-space circle centered on the pebble's own origin
+            //  (pebbleRadius, pebbleRadius — fixed by the visual size this
+            //  Arc was created with) but sized to tapRadius, not
+            //  pebbleRadius: a wider touch target than the drawn dot so
+            //  pick-up doesn't require pixel-precision, matching the vertex
+            //  hit-circles' tap tolerance. Center and radius intentionally
+            //  differ here — do not "simplify" back to (r, r, r).
+            circle.setInteractive(
+                new Geom.Circle(THEME.pebbleRadius, THEME.pebbleRadius, THEME.tapRadius),
+                Geom.Circle.Contains
+            );
+            this.wirePebbleEvents(circle);
             this.pebbleObjects[move.to] = circle;
             return;
         }
@@ -226,6 +322,12 @@ export class BoardScene extends Scene
             return;
         }
         this.pebbleObjects[move.to] = circle;
+        //  Pebbles are re-keyed across vertices as they move — this data tag
+        //  must be kept current on EVERY relocation, not just creation, or
+        //  event handlers reading it via getData() go stale after a
+        //  pebble's first move (unlike the hit-circles, which never move
+        //  and can safely use a creation-time closure instead).
+        circle.setData('vertexId', move.to);
         const dest = this.vertexPos[move.to];
         this.tweens.add({
             targets: circle,
@@ -236,10 +338,31 @@ export class BoardScene extends Scene
         });
     }
 
+    //  Full sweep, every state change — never "enable the mover's pebbles",
+    //  which would leave the PREVIOUS player's pebbles still draggable.
+    //  setDraggable requires the target to already be interactive (throws
+    //  otherwise) — safe here because syncPebbles makes every pebble
+    //  interactive at creation, unconditionally, before this can ever run
+    //  against it.
+    private refreshDraggable ()
+    {
+        for (const key of Object.keys(this.pebbleObjects) as VertexId[])
+        {
+            const pebble = this.pebbleObjects[key];
+            if (!pebble)
+            {
+                continue;
+            }
+            const draggable = this.state.phase === 'movement' && this.state.board[key] === this.state.current;
+            this.input.setDraggable(pebble, draggable);
+        }
+    }
+
     private applyAndSync (move: Move)
     {
         this.syncPebbles(move);
         this.state = applyMove(this.mode.engine, this.state, move);
+        this.refreshDraggable();
         EventBus.emit('game-state-changed', this.getSnapshot());
     }
 
