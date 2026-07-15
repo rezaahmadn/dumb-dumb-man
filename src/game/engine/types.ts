@@ -13,6 +13,7 @@ export interface BoardDef {
 export interface EngineConfig {
     board: BoardDef;
     pebblesPerPlayer: number;
+    repetitionLimit?: number;
 }
 
 export interface GameState {
@@ -22,6 +23,7 @@ export interface GameState {
     current: PlayerId;
     placed: Record<PlayerId, number>;
     winner: PlayerId | null;
+    history?: Record<string, number>;
 }
 
 export type Move =

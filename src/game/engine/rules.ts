@@ -11,7 +11,8 @@ export function initialState(cfg: EngineConfig, modeId: string): GameState {
         board,
         current: 1,
         placed: { 1: 0, 2: 0 },
-        winner: null
+        winner: null,
+        history: {}
     };
 }
 
@@ -51,6 +52,13 @@ export function legalMoves(cfg: EngineConfig, s: GameState): Move[] {
     return moves;
 }
 
+//  Position = board layout (in fixed vertex order) + side-to-move. Only
+//  called on movement-phase states — placement positions strictly gain
+//  pebbles and can never recur, so they're never keyed.
+function positionKey(cfg: EngineConfig, s: GameState): string {
+    return cfg.board.vertices.map((v) => s.board[v.id] ?? '.').join('') + '|' + s.current;
+}
+
 export function applyMove(cfg: EngineConfig, s: GameState, m: Move): GameState {
     const legal = legalMoves(cfg, s).some((lm) =>
         lm.kind === 'place'
@@ -77,7 +85,7 @@ export function applyMove(cfg: EngineConfig, s: GameState, m: Move): GameState {
             ? 'placement'
             : 'movement';
 
-    const next: GameState = {
+    let next: GameState = {
         ...s,
         board,
         placed,
@@ -86,10 +94,29 @@ export function applyMove(cfg: EngineConfig, s: GameState, m: Move): GameState {
         winner: null
     };
 
-    //  trap check runs after EVERY move, including the final placement (PRD T7):
-    //  gameover keeps current = trapped player, winner = mover
-    if (next.phase === 'movement' && legalMoves(cfg, next).length === 0) {
-        return { ...next, phase: 'gameover', winner: s.current };
+    if (next.phase === 'movement') {
+        //  Record the resulting position — covers ordinary moves and the
+        //  placement→movement transition (occurrence 1 for that position).
+        const key = positionKey(cfg, next);
+        const history = { ...(s.history ?? {}) };
+        const repeatCount = (history[key] ?? 0) + 1;
+        history[key] = repeatCount;
+        next = { ...next, history };
+
+        //  trap check runs after EVERY move, including the final placement
+        //  (PRD T7): gameover keeps current = trapped player, winner = mover
+        if (legalMoves(cfg, next).length === 0) {
+            return { ...next, phase: 'gameover', winner: s.current };
+        }
+
+        //  threefold repetition draw — gated by cfg.repetitionLimit (opt-in
+        //  per mode). A trapping move is a terminal state reached at most
+        //  once per game, so its repeatCount is always < repetitionLimit —
+        //  win and draw can never fire on the same move; this is safely 2nd.
+        if (cfg.repetitionLimit !== undefined && repeatCount >= cfg.repetitionLimit) {
+            return { ...next, phase: 'gameover', winner: null };
+        }
     }
+
     return next;
 }

@@ -8,6 +8,7 @@ export const WELL_MODE: GameModeDef = {
     name: 'Well Board',
     engine: {
         pebblesPerPlayer: 2,
+        repetitionLimit: 3,
         board: {
             vertices: [
                 { id: 'C', x: 360, y: 560 },
