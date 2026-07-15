@@ -2,6 +2,12 @@ name: Deploy to Netlify
 
 on:
   workflow_dispatch:
+  # AUTO-DEPLOY: this push trigger deploys on every push to main.
+  # Delete these 3 lines (push: / branches: / - main) to go back to
+  # manual-only (Actions tab -> Run workflow).
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
