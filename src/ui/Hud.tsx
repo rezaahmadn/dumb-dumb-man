@@ -41,10 +41,13 @@ export function Hud ({ snapshot, onRestart, onMenu }: HudProps)
                         {turnText(snapshot)}
                     </div>
                 )}
-                {isOver && game.winner !== null && (
+                {isOver && (
                     <div className="hud-overlay">
-                        <div className="hud-overlay-text" style={{ color: PLAYER_COLOR_CSS[game.winner] }}>
-                            {PLAYER_NAME[game.winner]} wins!
+                        <div
+                            className="hud-overlay-text"
+                            style={game.winner !== null ? { color: PLAYER_COLOR_CSS[game.winner] } : undefined}
+                        >
+                            {game.winner !== null ? `${PLAYER_NAME[game.winner]} wins!` : 'Draw!'}
                         </div>
                         <div className="hud-overlay-actions">
                             <button type="button" className="hud-button" onClick={onRestart}>

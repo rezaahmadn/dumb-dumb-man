@@ -183,7 +183,7 @@ Game settles into a mutual `C`-passing cycle → a position occurs a 3rd time �
 | # | Phase | Description | Status | Parallel | Depends | PRP Plan |
 |---|-------|-------------|--------|----------|---------|----------|
 | 1 | Engine draw detection | history + repetitionLimit + threefold draw in rules.ts, well config, T8–T12 + regression | complete | - | - | [plan](../plans/completed/draw-by-repetition-phase-1-engine.plan.md) · [report](../reports/draw-by-repetition-phase-1-engine-report.md) |
-| 2 | HUD draw display | "Draw!" overlay branch + neutral styling, browser validation of a scripted draw | pending | - | 1 | - |
+| 2 | HUD draw display | "Draw!" overlay branch + neutral styling, browser validation of a scripted draw | complete | - | 1 | [plan](../plans/completed/draw-by-repetition-phase-2-hud.plan.md) · [report](../reports/draw-by-repetition-phase-2-hud-report.md) |
 
 ### Phase Details
 
