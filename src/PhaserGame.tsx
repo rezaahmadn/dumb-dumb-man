@@ -12,9 +12,10 @@ interface IProps
 {
     currentActiveScene?: (scene_instance: Phaser.Scene) => void
     modeId?: string
+    opponentType?: 'human' | 'ai'
 }
 
-export const PhaserGame = forwardRef<IRefPhaserGame, IProps>(function PhaserGame({ currentActiveScene, modeId }, ref)
+export const PhaserGame = forwardRef<IRefPhaserGame, IProps>(function PhaserGame({ currentActiveScene, modeId, opponentType }, ref)
 {
     const game = useRef<Phaser.Game | null>(null!);
 
@@ -23,7 +24,7 @@ export const PhaserGame = forwardRef<IRefPhaserGame, IProps>(function PhaserGame
         if (game.current === null)
         {
 
-            game.current = StartGame("game-container", modeId);
+            game.current = StartGame("game-container", modeId, opponentType);
 
             if (typeof ref === 'function')
             {

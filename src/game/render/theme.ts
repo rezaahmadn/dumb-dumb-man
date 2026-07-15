@@ -10,7 +10,8 @@ export const THEME = {
     vertexRadius: 12,
     tapRadius: 120,
     moveTweenMs: 200,
-    highlightColor: 0xffffff
+    highlightColor: 0xffffff,
+    aiMoveDelayMs: 400
 } as const;
 
 export const PLAYER_NAME: Record<PlayerId, string> = { 1: 'Red', 2: 'Blue' };

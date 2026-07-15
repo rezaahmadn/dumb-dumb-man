@@ -5,11 +5,13 @@ import type { IRefPhaserGame } from './PhaserGame';
 import { PhaserGame } from './PhaserGame';
 import { Hud } from './ui/Hud';
 import { MainMenu } from './ui/MainMenu';
+import { OpponentSelect } from './ui/OpponentSelect';
 
 function App()
 {
     const phaserRef = useRef<IRefPhaserGame | null>(null);
     const [modeId, setModeId] = useState<string | null>(null);
+    const [opponentType, setOpponentType] = useState<'human' | 'ai' | null>(null);
     const [snapshot, setSnapshot] = useState<HudSnapshot | null>(null);
 
     useEffect(() =>
@@ -32,10 +34,17 @@ function App()
         setModeId(id);
     };
 
+    const startOpponent = (type: 'human' | 'ai') =>
+    {
+        setSnapshot(null);
+        setOpponentType(type);
+    };
+
     const toMenu = () =>
     {
         setSnapshot(null);
         setModeId(null);
+        setOpponentType(null);
     };
 
     const restart = () =>
@@ -49,10 +58,15 @@ function App()
         return <MainMenu onSelect={startMode} />;
     }
 
+    if (opponentType === null)
+    {
+        return <OpponentSelect onSelect={startOpponent} />;
+    }
+
     return (
         <>
-            <PhaserGame ref={phaserRef} currentActiveScene={currentScene} modeId={modeId} />
-            <Hud snapshot={snapshot} onRestart={restart} onMenu={toMenu} />
+            <PhaserGame ref={phaserRef} currentActiveScene={currentScene} modeId={modeId} opponentType={opponentType} />
+            <Hud snapshot={snapshot} onRestart={restart} onMenu={toMenu} aiPlayer={opponentType === 'ai' ? 2 : null} />
         </>
     );
 }

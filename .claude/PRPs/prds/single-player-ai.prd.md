@@ -159,7 +159,7 @@ Open app → mode-select screen (Solo / Hotseat) → Solo: board mounts with hum
 | # | Phase | Description | Status | Parallel | Depends | PRP Plan |
 |---|-------|-------------|--------|----------|---------|----------|
 | 1 | AI solver + tests | `ai.ts` (placement search + movement graph search), `ai.test.ts` (legality + optimality + regression) | complete | - | - | [plan](../plans/completed/single-player-ai-phase-1-solver.plan.md) · [report](../reports/single-player-ai-phase-1-solver-report.md) |
-| 2 | Mode-select + wiring | Solo/Hotseat mode-select UI, `BoardScene` turn-gating, `applyAndSync` reuse, optional HUD "vs AI"/thinking indicator | pending | - | 1 | - |
+| 2 | Mode-select + wiring | Solo/Hotseat mode-select UI, `BoardScene` turn-gating, `applyAndSync` reuse, optional HUD "vs AI"/thinking indicator | complete | - | 1 | [plan](../plans/completed/single-player-ai-phase-2-wiring.plan.md) · [report](../reports/single-player-ai-phase-2-wiring-report.md) |
 
 ### Phase Details
 

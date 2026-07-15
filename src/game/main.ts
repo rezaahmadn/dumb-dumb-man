@@ -21,10 +21,11 @@ const config: Phaser.Types.Core.GameConfig = {
     ]
 };
 
-const StartGame = (parent: string, modeId = 'well') => {
+const StartGame = (parent: string, modeId = 'well', opponentType: 'human' | 'ai' = 'human') => {
 
     const game = new Game({ ...config, parent });
     game.registry.set('modeId', modeId);
+    game.registry.set('opponentType', opponentType);
     return game;
 
 }

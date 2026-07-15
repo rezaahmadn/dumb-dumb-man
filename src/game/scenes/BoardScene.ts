@@ -1,7 +1,8 @@
 import { Geom, Scene } from 'phaser';
 import { EventBus } from '../EventBus';
+import { chooseMove } from '../engine/ai';
 import { applyMove, initialState, legalMoves } from '../engine/rules';
-import type { GameState, Move, VertexId } from '../engine/types';
+import type { GameState, Move, PlayerId, VertexId } from '../engine/types';
 import { MODES } from '../modes/registry';
 import type { GameModeDef } from '../modes/types';
 import { THEME } from '../render/theme';
@@ -15,7 +16,13 @@ export interface HudSnapshot
 interface BoardSceneData
 {
     modeId?: string;
+    opponentType?: 'human' | 'ai';
 }
+
+//  Human is always player 1 (red), AI always player 2 (blue) — matches
+//  initialState's existing default (player 1 moves first) and the PRD
+//  Decisions Log. Never derived dynamically; v1 has exactly one AI seat.
+const AI_PLAYER: PlayerId = 2;
 
 //  Everything drawn here comes from GameModeDef data (strokes + vertex
 //  coords). No board-specific constants may appear in this file — invariant
@@ -31,6 +38,7 @@ export class BoardScene extends Scene
     private highlightGraphics!: Phaser.GameObjects.Graphics;
     private selected: VertexId | null = null;
     private legalDestinations: Set<VertexId> = new Set();
+    private opponentType: 'human' | 'ai' = 'human';
 
     constructor ()
     {
@@ -46,6 +54,7 @@ export class BoardScene extends Scene
             throw new Error(`unknown mode: ${modeId}`);
         }
         this.mode = mode;
+        this.opponentType = data.opponentType ?? 'human';
     }
 
     create ()
@@ -160,6 +169,11 @@ export class BoardScene extends Scene
     private onVertexTap (id: VertexId)
     {
         if (this.state.phase === 'gameover')
+        {
+            return;
+        }
+
+        if (this.opponentType === 'ai' && this.state.current === AI_PLAYER)
         {
             return;
         }
@@ -353,7 +367,9 @@ export class BoardScene extends Scene
             {
                 continue;
             }
-            const draggable = this.state.phase === 'movement' && this.state.board[key] === this.state.current;
+            const draggable = this.state.phase === 'movement'
+                && this.state.board[key] === this.state.current
+                && !(this.opponentType === 'ai' && this.state.current === AI_PLAYER);
             this.input.setDraggable(pebble, draggable);
         }
     }
@@ -364,6 +380,20 @@ export class BoardScene extends Scene
         this.state = applyMove(this.mode.engine, this.state, move);
         this.refreshDraggable();
         EventBus.emit('game-state-changed', this.getSnapshot());
+        this.maybeScheduleAiMove();
+    }
+
+    private maybeScheduleAiMove ()
+    {
+        if (this.opponentType !== 'ai' || this.state.current !== AI_PLAYER || this.state.phase === 'gameover')
+        {
+            return;
+        }
+        this.time.delayedCall(THEME.aiMoveDelayMs, () =>
+        {
+            const move = chooseMove(this.mode.engine, this.state);
+            this.applyAndSync(move);
+        });
     }
 
     private renderHighlights ()
