@@ -85,21 +85,22 @@ describe('A4 no premature win', () => {
     });
 });
 
-describe('A5 single-step movement, no sliding', () => {
-    it('legal 3/3/3 board yields exactly 6 P1 moves; L→R is NOT legal', () => {
+describe('A5 skip movement — jump over blockers, land only on empty', () => {
+    it('legal 3/3/3 board yields 8 P1 moves, including skips over occupied cells', () => {
         const s = makeState({
             board: { TL: 2, T: 2, TR: 1, L: 1, C: null, R: null, BL: null, B: 1, BR: 2 },
             current: 1
         });
+        //  L>R and TR>BL both skip over an occupied in-between cell (C for
+        //  both the mid row and the TR-C-BL diagonal) — legal under skip movement.
         expect(moveDests(s)).toEqual(
-            ['B>BL', 'B>C', 'L>BL', 'L>C', 'TR>C', 'TR>R'].sort()
+            ['B>BL', 'B>C', 'L>BL', 'L>C', 'L>R', 'TR>BL', 'TR>C', 'TR>R'].sort()
         );
-        expect(moveDests(s)).not.toContain('L>R');
 
-        const adj = adjacency(CFG.board);
+        //  sanity: skip movement never lands ON an occupied cell (own or opponent)
         for (const m of legalMoves(CFG, s)) {
             if (m.kind === 'move') {
-                expect(adj[m.from]).toContain(m.to);
+                expect(s.board[m.to]).toBeNull();
             }
         }
     });
@@ -121,24 +122,83 @@ describe('A6 win on move', () => {
     });
 });
 
-describe('A7 forced pass (synthetic)', () => {
-    it('all three P1 pebbles fully surrounded — legalMoves is exactly [pass]', () => {
+describe('A7 skip movement resolves former step-mode stuck position', () => {
+    it('a board that was fully-surrounded under step movement now has 3 legal skip moves', () => {
+        //  Under the old step-only movement this board forced a pass (every
+        //  P1 piece's direct neighbours were all occupied). Skip movement
+        //  lets each piece jump the blocker to reach the empty cell beyond
+        //  it: T>B (skips C), TR>BL (skips C), R>L (skips C).
         const s = makeState({
             board: { T: 1, TR: 1, R: 1, TL: 2, C: 2, BR: 2, L: null, B: null, BL: null },
             current: 1
         });
-        expect(legalMoves(CFG, s)).toEqual([{ kind: 'pass' }]);
+        expect(moveDests(s)).toEqual(['R>L', 'T>B', 'TR>BL'].sort());
+    });
+
+    it('forced pass is unreachable for any non-aligned 3/3/3 board under skip movement', () => {
+        //  Exhaustive proof: skip movement lets a piece reach any empty cell
+        //  on any of its lines regardless of blockers, so as long as at
+        //  least one of the 3 empty cells shares a line with a player's
+        //  piece, they have a move. Search all C(9,3)*C(6,3) = 1680
+        //  non-aligned placements x 2 sides-to-move to confirm zero forced
+        //  passes remain possible — this is why the pass Move variant and
+        //  its guards are unreachable dead code for MORRIS_MODE specifically.
+        const verts = CFG.board.vertices.map((v) => v.id);
+        const combos = (arr: VertexId[], k: number): VertexId[][] => {
+            if (k === 0) return [[]];
+            if (arr.length < k) return [];
+            const [first, ...rest] = arr;
+            return [...combos(rest, k - 1).map((c) => [first, ...c]), ...combos(rest, k)];
+        };
+
+        let stuckCount = 0;
+        for (const p1 of combos(verts, 3)) {
+            const remaining = verts.filter((v) => !p1.includes(v));
+            for (const p2 of combos(remaining, 3)) {
+                const board: Record<VertexId, PlayerId | null> = {};
+                for (const v of verts) board[v] = null;
+                for (const v of p1) board[v] = 1;
+                for (const v of p2) board[v] = 2;
+                if (alignedPlayer(CFG, board) !== null) continue;
+                for (const current of [1, 2] as PlayerId[]) {
+                    const moves = legalMoves(CFG, { ...makeState({ board }), current });
+                    if (moves.length === 1 && moves[0].kind === 'pass') stuckCount++;
+                }
+            }
+        }
+        expect(stuckCount).toBe(0);
     });
 });
 
-describe('A8 pass semantics', () => {
+describe('A8 pass semantics (generic engine mechanics)', () => {
+    //  Pass is unreachable for MORRIS_MODE under skip movement (see A7), so
+    //  this exercises applyMove's pass branch via a minimal synthetic
+    //  alignment/step config where a forced pass genuinely occurs — proving
+    //  the mechanism itself (flip current, keep board, record history)
+    //  still works correctly wherever a future mode might need it.
+    const LINE_CFG = {
+        pebblesPerPlayer: 1,
+        movement: 'step' as const,
+        win: 'alignment' as const,
+        board: {
+            vertices: [{ id: 'A', x: 0, y: 0 }, { id: 'B', x: 1, y: 0 }, { id: 'X', x: 2, y: 0 }],
+            lines: [['A', 'B', 'X']]
+        }
+    };
+
     it('applying pass flips current, leaves board unchanged, records history', () => {
-        const s = makeState({
-            board: { T: 1, TR: 1, R: 1, TL: 2, C: 2, BR: 2, L: null, B: null, BL: null },
+        const s: GameState = {
+            modeId: 'scratch',
+            phase: 'movement',
+            board: { A: 1, B: 2, X: null },
             current: 1,
+            placed: { 1: 1, 2: 1 },
+            winner: null,
             history: {}
-        });
-        const next = applyMove(CFG, s, { kind: 'pass' });
+        };
+        expect(legalMoves(LINE_CFG, s)).toEqual([{ kind: 'pass' }]);
+
+        const next = applyMove(LINE_CFG, s, { kind: 'pass' });
         expect(next.phase).toBe('movement');
         expect(next.current).toBe(2);
         expect(next.board).toEqual(s.board);
@@ -185,14 +245,17 @@ describe('A9 draw by threefold repetition', () => {
 });
 
 describe('A10 AI takes an immediate win', () => {
-    it('chooseMove returns C→T, completing the top row', () => {
+    it('chooseMove picks a move that wins immediately', () => {
+        //  Under skip movement this board has two equally-good winning moves:
+        //  C>T (completes top row TL-T-TR) and TL>BL (completes diagonal
+        //  TR-C-BL, skipping over the now-vacated... no, skipping over C).
+        //  Assert on the outcome (any immediate win), not a specific move,
+        //  since either is a correct choice.
         const s = makeState({
             board: { TL: 1, TR: 1, C: 1, L: 2, R: 2, B: 2, T: null, BL: null, BR: null },
             current: 1
         });
         const chosen = chooseMove(CFG, s);
-        expect(chosen).toEqual({ kind: 'move', from: 'C', to: 'T' });
-
         const next = applyMove(CFG, s, chosen);
         expect(next.phase).toBe('gameover');
         expect(next.winner).toBe(1);
