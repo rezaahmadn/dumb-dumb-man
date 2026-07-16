@@ -43,7 +43,7 @@ body,
 
 .hud-turn {
     position: absolute;
-    top: 11%;
+    top: 1.5%;
     left: 0;
     right: 0;
     text-align: center;
@@ -90,7 +90,7 @@ body,
    re-enable pointer-events to stay clickable. Top-left, clear of vertices. */
 .hud-menu-button {
     position: absolute;
-    top: 4%;
+    top: 1.5%;
     left: 6%;
     padding: 6px 14px;
     font-size: 0.9rem;

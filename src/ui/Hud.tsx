@@ -10,12 +10,16 @@ interface HudProps
     aiPlayer: PlayerId | null;
 }
 
-function goalText (snapshot: HudSnapshot): string
+function goalText (snapshot: HudSnapshot): string | null
 {
     const { game } = snapshot;
     if (game.modeId === 'morris')
     {
         return 'First to align 3 pebbles wins!';
+    }
+    if (game.modeId === 'clash')
+    {
+        return null;
     }
     return 'Trap your opponent!';
 }
@@ -52,7 +56,7 @@ export function Hud ({ snapshot, onRestart, onMenu, aiPlayer }: HudProps)
                 <button type="button" className="hud-menu-button" onClick={onMenu}>
                     Menu
                 </button>
-                {!isOver && (
+                {!isOver && goalText(snapshot) !== null && (
                     <div className="hud-goal">
                         {goalText(snapshot)}
                     </div>

@@ -1,5 +1,6 @@
 import { Geom, Scene } from 'phaser';
 import { EventBus } from '../EventBus';
+import { chooseMoveGreedy } from '../engine/aiGreedy';
 import { chooseMove } from '../engine/ai';
 import { applyMove, initialState, legalMoves } from '../engine/rules';
 import type { GameState, Move, PlayerId, VertexId } from '../engine/types';
@@ -38,6 +39,7 @@ export class BoardScene extends Scene
     private highlightGraphics!: Phaser.GameObjects.Graphics;
     private selected: VertexId | null = null;
     private legalDestinations: Set<VertexId> = new Set();
+    private legalJumpDestinations: Set<VertexId> = new Set();
     private opponentType: 'human' | 'ai' = 'human';
 
     constructor ()
@@ -66,6 +68,7 @@ export class BoardScene extends Scene
         }
 
         this.drawBoard();
+        this.drawVertexLabels();
         this.createVertexHitAreas();
 
         this.highlightGraphics = this.add.graphics();
@@ -75,6 +78,19 @@ export class BoardScene extends Scene
         this.selected = null;
         this.legalDestinations = new Set();
         this.state = initialState(this.mode.engine, this.mode.id);
+
+        //  Preplaced/movement-start modes (Pebble Clash) never fire a
+        //  'place' move — seed their pebble objects directly from state.
+        //  Placement-start modes (well, morris) begin all-null here, so
+        //  this loop is a no-op for them.
+        for (const v of this.mode.engine.board.vertices)
+        {
+            const occupant = this.state.board[v.id];
+            if (occupant !== null)
+            {
+                this.spawnPebbleAt(v.id, occupant);
+            }
+        }
 
         //  NOTE: no 'game-state-changed' emit here on purpose — React seeds
         //  its initial snapshot via getSnapshot() through the scene-ready
@@ -137,6 +153,21 @@ export class BoardScene extends Scene
         }
     }
 
+    //  Debug aid: vertex-id labels so board issues can be reported by id
+    //  (e.g. "bc0") instead of pixel position. Drawn above pebbles so ids
+    //  stay legible even on occupied vertices.
+    private drawVertexLabels ()
+    {
+        for (const v of this.mode.engine.board.vertices)
+        {
+            const label = this.add.text(v.x + 16, v.y - 16, v.id, {
+                fontSize: '16px',
+                color: '#888888'
+            });
+            label.setDepth(3);
+        }
+    }
+
     private createVertexHitAreas ()
     {
         for (const v of this.mode.engine.board.vertices)
@@ -166,6 +197,21 @@ export class BoardScene extends Scene
         }
     }
 
+    private spawnPebbleAt (vertexId: VertexId, player: PlayerId)
+    {
+        const pos = this.vertexPos[vertexId];
+        const circle = this.add.circle(pos.x, pos.y, THEME.pebbleRadius, THEME.pebble[player]);
+        circle.setDepth(1);
+        circle.setData('vertexId', vertexId);
+        circle.setInteractive(
+            new Geom.Circle(THEME.pebbleRadius, THEME.pebbleRadius, THEME.tapRadius),
+            Geom.Circle.Contains
+        );
+        this.wirePebbleEvents(circle);
+        this.pebbleObjects[vertexId] = circle;
+        return circle;
+    }
+
     private onVertexTap (id: VertexId)
     {
         if (this.state.phase === 'gameover')
@@ -192,12 +238,23 @@ export class BoardScene extends Scene
 
         if (this.selected !== null)
         {
-            const isLegalDest = moves.some(
-                (m) => m.kind === 'move' && m.from === this.selected && m.to === id
+            const quietMove = moves.find(
+                (m): m is Extract<Move, { kind: 'move' }> => m.kind === 'move' && m.from === this.selected && m.to === id
             );
-            if (isLegalDest)
+            //  Prefer a jump over a quiet move landing on the same vertex —
+            //  a capture is the more significant action a tap could mean.
+            const jumpMove = moves.find(
+                (m): m is Extract<Move, { kind: 'jump' }> => m.kind === 'jump' && m.from === this.selected && m.hops[m.hops.length - 1].to === id
+            );
+            if (jumpMove)
             {
-                this.applyAndSync({ kind: 'move', from: this.selected, to: id });
+                this.applyAndSync(jumpMove);
+                this.clearSelection();
+                return;
+            }
+            if (quietMove)
+            {
+                this.applyAndSync(quietMove);
                 this.clearSelection();
                 return;
             }
@@ -221,6 +278,11 @@ export class BoardScene extends Scene
                 .filter((m): m is Extract<Move, { kind: 'move' }> => m.kind === 'move' && m.from === id)
                 .map((m) => m.to)
         );
+        this.legalJumpDestinations = new Set(
+            moves
+                .filter((m): m is Extract<Move, { kind: 'jump' }> => m.kind === 'jump' && m.from === id)
+                .map((m) => m.hops[m.hops.length - 1].to)
+        );
         this.renderHighlights();
     }
 
@@ -228,6 +290,7 @@ export class BoardScene extends Scene
     {
         this.selected = null;
         this.legalDestinations = new Set();
+        this.legalJumpDestinations = new Set();
         this.renderHighlights();
     }
 
@@ -309,27 +372,43 @@ export class BoardScene extends Scene
         const player = this.state.current;
         if (move.kind === 'place')
         {
-            const pos = this.vertexPos[move.to];
-            const circle = this.add.circle(pos.x, pos.y, THEME.pebbleRadius, THEME.pebble[player]);
-            circle.setDepth(1);
-            circle.setData('vertexId', move.to);
-            //  Local-space circle centered on the pebble's own origin
-            //  (pebbleRadius, pebbleRadius — fixed by the visual size this
-            //  Arc was created with) but sized to tapRadius, not
-            //  pebbleRadius: a wider touch target than the drawn dot so
-            //  pick-up doesn't require pixel-precision, matching the vertex
-            //  hit-circles' tap tolerance. Center and radius intentionally
-            //  differ here — do not "simplify" back to (r, r, r).
-            circle.setInteractive(
-                new Geom.Circle(THEME.pebbleRadius, THEME.pebbleRadius, THEME.tapRadius),
-                Geom.Circle.Contains
-            );
-            this.wirePebbleEvents(circle);
-            this.pebbleObjects[move.to] = circle;
+            this.spawnPebbleAt(move.to, player);
             return;
         }
 
         if (move.kind === 'pass') return;
+        if (move.kind === 'jump')
+        {
+            const circle = this.pebbleObjects[move.from];
+            delete this.pebbleObjects[move.from];
+            if (!circle)
+            {
+                return;
+            }
+            //  Destroy every captured pebble immediately — simplest correct
+            //  v1. syncPebbles runs BEFORE applyMove (see the comment above
+            //  this method), so this is purely visual and doesn't affect
+            //  game state either way.
+            for (const hop of move.hops)
+            {
+                this.pebbleObjects[hop.over]?.destroy();
+                delete this.pebbleObjects[hop.over];
+            }
+            const lastHop = move.hops[move.hops.length - 1];
+            this.pebbleObjects[lastHop.to] = circle;
+            circle.setData('vertexId', lastHop.to);
+            //  Chain the tween through every intermediate landing — this is
+            //  what makes a multi-hop capture read as "hopping", not
+            //  "sliding" straight to the end.
+            this.tweens.chain({
+                targets: circle,
+                tweens: move.hops.map((hop) => {
+                    const dest = this.vertexPos[hop.to];
+                    return { x: dest.x, y: dest.y, duration: THEME.moveTweenMs, ease: 'Quad.easeInOut' };
+                })
+            });
+            return;
+        }
 
         const circle = this.pebbleObjects[move.from];
         delete this.pebbleObjects[move.from];
@@ -393,7 +472,13 @@ export class BoardScene extends Scene
         }
         this.time.delayedCall(THEME.aiMoveDelayMs, () =>
         {
-            const move = chooseMove(this.mode.engine, this.state);
+            //  Elimination-mode boards (Pebble Clash) are too large for the
+            //  retrograde solver (kCombinations over 37 vertices at k=16)
+            //  — hard dispatch here, never inside chooseMove itself, so
+            //  well/morris's call path is untouched.
+            const move = this.mode.engine.win === 'elimination'
+                ? chooseMoveGreedy(this.mode.engine, this.state)
+                : chooseMove(this.mode.engine, this.state);
             this.applyAndSync(move);
         });
     }
@@ -412,6 +497,15 @@ export class BoardScene extends Scene
 
         this.highlightGraphics.fillStyle(THEME.highlightColor, 0.35);
         for (const dest of this.legalDestinations)
+        {
+            const d = this.vertexPos[dest];
+            this.highlightGraphics.fillCircle(d.x, d.y, THEME.vertexRadius + 6);
+        }
+
+        //  Jump landings drawn distinctly (PRD "Should" item), after quiet
+        //  destinations so jump color visually wins on any overlap.
+        this.highlightGraphics.fillStyle(THEME.jumpHighlightColor, 0.5);
+        for (const dest of this.legalJumpDestinations)
         {
             const d = this.vertexPos[dest];
             this.highlightGraphics.fillCircle(d.x, d.y, THEME.vertexRadius + 6);
