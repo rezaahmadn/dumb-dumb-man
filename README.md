@@ -2,6 +2,8 @@
 
 A two-player strategy game built with Phaser 4, React 19, and TypeScript. Features two distinct game modes with different mechanics and AI opponents.
 
+> **Note**: This project exists to test ECC (Extended Claude Code) workflows — PRD generation, planning, implementation, code review, and PR automation — end-to-end on a real codebase.
+
 ## Game Modes
 
 ### Pebble Trap (Classic Mode)
