@@ -14,6 +14,8 @@ export interface EngineConfig {
     board: BoardDef;
     pebblesPerPlayer: number;
     repetitionLimit?: number;
+    movement?: 'slide' | 'step';
+    win?: 'trap' | 'alignment';
 }
 
 export interface GameState {
@@ -28,4 +30,5 @@ export interface GameState {
 
 export type Move =
     | { kind: 'place'; to: VertexId }
-    | { kind: 'move'; from: VertexId; to: VertexId };
+    | { kind: 'move'; from: VertexId; to: VertexId }
+    | { kind: 'pass' };

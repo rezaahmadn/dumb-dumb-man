@@ -329,6 +329,8 @@ export class BoardScene extends Scene
             return;
         }
 
+        if (move.kind === 'pass') return;
+
         const circle = this.pebbleObjects[move.from];
         delete this.pebbleObjects[move.from];
         if (!circle)

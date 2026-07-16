@@ -1,5 +1,5 @@
 //  engine/ imports NOTHING outside engine/ (no phaser, no react, no modes/).
-import { applyMove, legalMoves } from './rules';
+import { alignedPlayer, applyMove, legalMoves } from './rules';
 import type { EngineConfig, GameState, Move, PlayerId, VertexId } from './types';
 
 export function positionKey(cfg: EngineConfig, s: GameState): string {
@@ -26,6 +26,12 @@ function allLiveMovementNodes(cfg: EngineConfig): GameState[] {
             for (const v of vertices) board[v] = null;
             for (const v of p1) board[v] = 1;
             for (const v of p2) board[v] = 2;
+            //  In alignment mode, a board where someone already owns a full
+            //  line can never be a real mid-game position — applyMove would
+            //  already have ended the game the moment that line was
+            //  completed — so exclude it here regardless of whose turn it
+            //  is on the synthetic board.
+            if ((cfg.win ?? 'trap') === 'alignment' && alignedPlayer(cfg, board) !== null) continue;
             for (const current of [1, 2] as PlayerId[]) {
                 const state: GameState = {
                     modeId: '',
