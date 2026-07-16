@@ -12,7 +12,7 @@ export function MainMenu ({ onSelect }: MainMenuProps)
     return (
         <div id="menu-layer">
             <div id="menu-box">
-                <h1 className="menu-title">Pebble Trap</h1>
+                <h1 className="menu-title">Dumb Dumb Man</h1>
                 <div className="menu-modes">
                     {modes.map((mode) => (
                         <button

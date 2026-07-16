@@ -10,6 +10,16 @@ interface HudProps
     aiPlayer: PlayerId | null;
 }
 
+function goalText (snapshot: HudSnapshot): string
+{
+    const { game } = snapshot;
+    if (game.modeId === 'morris')
+    {
+        return 'First to align 3 pebbles wins!';
+    }
+    return 'Trap your opponent!';
+}
+
 function turnText (snapshot: HudSnapshot, aiPlayer: PlayerId | null): string
 {
     const { game, pebblesPerPlayer } = snapshot;
@@ -42,6 +52,11 @@ export function Hud ({ snapshot, onRestart, onMenu, aiPlayer }: HudProps)
                 <button type="button" className="hud-menu-button" onClick={onMenu}>
                     Menu
                 </button>
+                {!isOver && (
+                    <div className="hud-goal">
+                        {goalText(snapshot)}
+                    </div>
+                )}
                 {!isOver && (
                     <div className="hud-turn" style={{ color: PLAYER_COLOR_CSS[game.current] }}>
                         {turnText(snapshot, aiPlayer)}

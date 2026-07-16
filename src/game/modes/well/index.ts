@@ -5,7 +5,7 @@ import type { GameModeDef } from '../types';
 //  (see PRD Trap Math). Never "fix" the rim line into a cycle.
 export const WELL_MODE: GameModeDef = {
     id: 'well',
-    name: 'Well Board',
+    name: 'Pebble Trap',
     engine: {
         pebblesPerPlayer: 2,
         repetitionLimit: 3,
