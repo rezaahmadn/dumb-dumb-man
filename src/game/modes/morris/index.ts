@@ -2,14 +2,14 @@ import type { GameModeDef } from '../types';
 
 //  Mode 2: "Three-in-a-Row" — Three Men's Morris / Tapatan. 3x3 grid: square +
 //  inner cross + both diagonals, all crossing at the centre. Alignment win,
-//  single-step movement. See .claude/PRPs/prds/three-in-a-row.prd.md.
+//  skip movement (slide with ability to jump over occupied cells). See .claude/PRPs/prds/three-in-a-row.prd.md.
 export const MORRIS_MODE: GameModeDef = {
     id: 'morris',
     name: 'Three-in-a-Row',
     engine: {
         pebblesPerPlayer: 3,
         repetitionLimit: 3,
-        movement: 'step',
+        movement: 'skip',
         win: 'alignment',
         board: {
             vertices: [

@@ -36,7 +36,27 @@ export function legalMoves(cfg: EngineConfig, s: GameState): Move[] {
     }
     //  phase === 'movement'
     let moves: Move[];
-    if ((cfg.movement ?? 'slide') === 'step') {
+    if ((cfg.movement ?? 'slide') === 'skip') {
+        //  skip: slide along a line, can jump over occupied cells to reach empty ones
+        moves = [];
+        const seen = new Set<string>();
+        for (const line of cfg.board.lines) {
+            for (let i = 0; i < line.length; i++) {
+                if (s.board[line[i]] !== s.current) continue;
+                for (const dir of [1, -1]) {
+                    for (let j = i + dir; j >= 0 && j < line.length; j += dir) {
+                        if (s.board[line[j]] === null) {
+                            const key = `${line[i]}>${line[j]}`;
+                            if (!seen.has(key)) {
+                                seen.add(key);
+                                moves.push({ kind: 'move', from: line[i], to: line[j] });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else if ((cfg.movement ?? 'slide') === 'step') {
         const adj = adjacency(cfg.board);
         moves = [];
         for (const v of Object.keys(s.board)) {

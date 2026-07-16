@@ -14,7 +14,7 @@ export interface EngineConfig {
     board: BoardDef;
     pebblesPerPlayer: number;
     repetitionLimit?: number;
-    movement?: 'slide' | 'step';
+    movement?: 'slide' | 'step' | 'skip';
     win?: 'trap' | 'alignment';
 }
 
