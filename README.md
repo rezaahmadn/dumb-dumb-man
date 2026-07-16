@@ -1,8 +1,43 @@
-# Phaser React TypeScript Template
+# Dumb Dumb Man
 
-This is a Phaser project template that uses the React framework and Vite for bundling. It includes a bridge for React to Phaser game communication, hot-reloading for quick development workflow and scripts to generate production-ready builds.
+A two-player strategy game built with Phaser 4, React 19, and TypeScript. Features two distinct game modes with different mechanics and AI opponents.
 
-**[This Template is also available as a JavaScript version.](https://github.com/phaserjs/template-react)**
+## Game Modes
+
+### Pebble Trap (Classic Mode)
+- **Players**: 2 (human vs human or human vs AI)
+- **Board**: 5-vertex well board (center + cardinal directions)
+- **Goal**: Trap your opponent by blocking all their moves
+- **Pieces**: 2 pebbles per player
+- **Movement**: Slide any distance along connecting lines
+- **Win condition**: Opponent has no legal moves
+
+### Three-in-a-Row (New Mode)
+- **Players**: 2 (human vs human or human vs AI)  
+- **Board**: 3×3 grid (9 vertices)
+- **Goal**: Align 3 pebbles in any line (horizontal, vertical, or diagonal)
+- **Pieces**: 3 pebbles per player
+- **Phases**: Placement (drop pieces) then Movement (slide one step at a time)
+- **Movement**: Single-step hops along adjacent vertices (no sliding)
+- **Win condition**: Complete a line of 3 aligned pebbles
+
+## Features
+
+- **Dual-mode engine**: Extensible architecture supporting multiple game types
+- **Smart AI**: Exact retrograde solver (not depth-capped)
+- **Hotseat & AI modes**: Play locally against a friend or challenge the computer
+- **Fast development**: Hot-reloading with Vite + React
+- **Fully typed**: 100% TypeScript
+
+## Try It Out
+
+**Play online**: [dumb-dumb-man.netlify.app](https://dumb-dumb-man.netlify.app)
+
+---
+
+## Development
+
+This project is built on a Phaser + React + TypeScript template.
 
 ### Versions
 
