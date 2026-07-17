@@ -46,5 +46,14 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-        # Build output moved with the app: dist -> apps/web/dist.
-        run: npx netlify-cli@26 deploy --dir=apps/web/dist --prod
+        # --filter: this is a pnpm workspace, so the CLI otherwise refuses to
+        #   guess between @pebble/web and @pebble/engine ("Projects detected").
+        #   It runs the command *in* that package, so --dir is given as an
+        #   absolute path rather than relying on the resulting cwd.
+        # --no-build: the Build step above already produced apps/web/dist.
+        run: >
+          npx netlify-cli@26 deploy
+          --filter @pebble/web
+          --dir="$GITHUB_WORKSPACE/apps/web/dist"
+          --no-build
+          --prod
