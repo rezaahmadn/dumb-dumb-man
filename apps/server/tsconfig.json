@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    //  ES2020 + node types, no DOM — same portability boundary the engine
+    //  draws (packages/engine/tsconfig.json). A browser global referenced
+    //  here fails typecheck rather than at runtime.
+    "lib": ["ES2020"],
+    "types": ["node"]
+  },
+  "include": ["src"]
+}

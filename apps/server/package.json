@@ -1,0 +1,25 @@
+{
+  "name": "@pebble/server",
+  "description": "Authoritative socket.io server for online multiplayer. Imports @pebble/engine as the single source of game rules.",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pebble/engine": "workspace:*",
+    "@pebble/protocol": "workspace:*",
+    "socket.io": "^4.8.3",
+    "tsx": "^4.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "~5.7.2",
+    "vitest": "^4.1.10"
+  }
+}

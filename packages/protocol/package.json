@@ -1,0 +1,20 @@
+{
+  "name": "@pebble/protocol",
+  "description": "Wire contract shared by @pebble/server and @pebble/web. Typed socket events and payloads, so the two sides cannot drift.",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pebble/engine": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "~5.7.2"
+  }
+}
