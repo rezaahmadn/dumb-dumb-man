@@ -8,7 +8,11 @@ export type Room = {
     code: RoomCode;
     modeId: string;
     state: GameState;
-    socketIds: [string, string] | [string] | [];
+    //  Seat is decided once, at addSocketToRoom, and never re-derived from
+    //  position — a live socket's seat must never change just because the
+    //  OTHER socket disconnected. See .claude/reviews for the incident this
+    //  replaced (array-index derivation swapped seats on reconnect).
+    socketSeats: Map<string, PlayerId>;
     tokens: Map<SessionToken, PlayerId>;
     graceTimer: NodeJS.Timeout | null;
 };
@@ -38,7 +42,7 @@ export function createRoom(modeId: string): Room {
         code,
         modeId,
         state: initialState(mode.engine, modeId),
-        socketIds: [],
+        socketSeats: new Map(),
         tokens: new Map(),
         graceTimer: null,
     };
@@ -53,11 +57,10 @@ export function getRoom(code: RoomCode): Room | undefined {
 
 export function addSocketToRoom(room: Room, socketId: string, seat: PlayerId, token: SessionToken): void {
     room.tokens.set(token, seat);
-    if (room.socketIds.length === 0) {
-        room.socketIds = [socketId];
-    } else if (room.socketIds.length === 1) {
-        room.socketIds = [room.socketIds[0], socketId];
-    }
+    //  Seat comes from the caller (create hardcodes 1, join hardcodes 2,
+    //  rejoin reads it back off room.tokens) — never derived from how many
+    //  sockets happen to be connected right now.
+    room.socketSeats.set(socketId, seat);
     //  Clear grace timer if rejoining
     if (room.graceTimer) {
         clearTimeout(room.graceTimer);
@@ -66,12 +69,9 @@ export function addSocketToRoom(room: Room, socketId: string, seat: PlayerId, to
 }
 
 export function removeSocketFromRoom(room: Room, socketId: string): void {
-    const index = (room.socketIds as string[]).indexOf(socketId);
-    if (index !== -1) {
-        (room.socketIds as string[]).splice(index, 1);
-    }
+    room.socketSeats.delete(socketId);
     //  Arm grace timer: room auto-deletes after 60s if not rejoined
-    if (room.socketIds.length === 0) {
+    if (room.socketSeats.size === 0) {
         room.graceTimer = setTimeout(() => {
             rooms.delete(room.code);
         }, 60000);
@@ -87,12 +87,11 @@ export function deleteRoom(code: RoomCode): void {
 }
 
 export function getPlayerSeat(room: Room, socketId: string): PlayerId | undefined {
-    const index = (room.socketIds as string[]).indexOf(socketId);
-    return index === 0 ? 1 : index === 1 ? 2 : undefined;
+    return room.socketSeats.get(socketId);
 }
 
 export function isRoomFull(room: Room): boolean {
-    return room.socketIds.length === 2;
+    return room.socketSeats.size === 2;
 }
 
 export function rollForRoom(room: Room): void {

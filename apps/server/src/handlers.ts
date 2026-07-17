@@ -58,11 +58,8 @@ export function registerHandlers(
             //  Roll on second join
             rollForRoom(room);
             //  Emit per-socket so each learns their own seat
-            for (const sid of room.socketIds) {
-                const seat = getPlayerSeat(room, sid);
-                if (seat) {
-                    io.to(sid).emit('roll:result', { yourSeat: seat, modeId: room.modeId, state: room.state });
-                }
+            for (const [sid, seat] of room.socketSeats) {
+                io.to(sid).emit('roll:result', { yourSeat: seat, modeId: room.modeId, state: room.state });
             }
             const result: JoinAck = { ok: true, code, token };
             ack(result);
