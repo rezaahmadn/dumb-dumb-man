@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    //  ES2020 only — NO "DOM". This is the boundary that keeps the engine
+    //  portable: a browser-only global (window, document) fails typecheck
+    //  here rather than at server runtime.
+    "lib": ["ES2020"]
+  },
+  "include": ["src"]
+}

@@ -1,0 +1,27 @@
+{
+  "name": "@pebble/web",
+  "description": "Mobile-first 2-player trap board game built with Phaser 4, React and TypeScript.",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite --config vite/config.dev.mjs",
+    "build": "vite build --config vite/config.prod.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pebble/engine": "workspace:*",
+    "phaser": "4.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "terser": "^5.28.1",
+    "typescript": "~5.7.2",
+    "vite": "^6.3.1"
+  }
+}

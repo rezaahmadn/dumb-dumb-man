@@ -1,0 +1,21 @@
+{
+  "name": "@pebble/engine",
+  "description": "Pure game rules, board maths, AI and mode definitions. No phaser, no react, no DOM.",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts",
+    "./modes": "./src/modes/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "~5.7.2",
+    "vitest": "^4.1.10"
+  }
+}
