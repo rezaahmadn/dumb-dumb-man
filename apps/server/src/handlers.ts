@@ -8,6 +8,7 @@ import {
     getRoom,
     isRoomFull,
     removeSocketFromRoom,
+    rollForRoom,
 } from './rooms';
 import type {
     ClientToServerEvents,
@@ -54,6 +55,9 @@ export function registerHandlers(
             const token = generateSessionToken();
             addSocketToRoom(room, socket.id, 2, token);
             socket.join(code);
+            //  Roll on second join
+            rollForRoom(room);
+            io.to(code).emit('roll:result', { yourSeat: getPlayerSeat(room, socket.id), modeId: room.modeId, state: room.state });
             const result: JoinAck = { ok: true, code, token };
             ack(result);
         } catch (err) {

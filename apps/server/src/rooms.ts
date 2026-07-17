@@ -94,3 +94,9 @@ export function getPlayerSeat(room: Room, socketId: string): PlayerId | undefine
 export function isRoomFull(room: Room): boolean {
     return room.socketIds.length === 2;
 }
+
+export function rollForRoom(room: Room): void {
+    const seat: PlayerId = Math.random() < 0.5 ? 1 : 2;
+    //  Update state.current to reflect the rolled seat (seat 1 is red/current)
+    room.state.current = seat;
+}
