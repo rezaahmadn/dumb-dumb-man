@@ -116,6 +116,29 @@ export class BoardScene extends Scene
         EventBus.emit('game-state-changed', this.getSnapshot());
     }
 
+    public hydrateState (state: GameState)
+    {
+        for (const key of Object.keys(this.pebbleObjects) as VertexId[])
+        {
+            this.pebbleObjects[key]?.destroy();
+        }
+        this.pebbleObjects = {};
+        this.selected = null;
+        this.legalDestinations = new Set();
+        this.renderHighlights();
+        this.state = state;
+        for (const v of this.mode.engine.board.vertices)
+        {
+            const occupant = this.state.board[v.id];
+            if (occupant !== null)
+            {
+                this.spawnPebbleAt(v.id, occupant);
+            }
+        }
+        this.refreshDraggable();
+        EventBus.emit('game-state-changed', this.getSnapshot());
+    }
+
     private drawBoard ()
     {
         const g = this.add.graphics();
@@ -453,7 +476,7 @@ export class BoardScene extends Scene
         }
     }
 
-    private applyAndSync (move: Move)
+    protected applyAndSync (move: Move)
     {
         this.syncPebbles(move);
         this.state = applyMove(this.mode.engine, this.state, move);

@@ -7,11 +7,15 @@ import { Hud } from './ui/Hud';
 import { MainMenu } from './ui/MainMenu';
 import { OpponentSelect } from './ui/OpponentSelect';
 
+type Screen =
+  | { kind: 'menu' }
+  | { kind: 'opponent-select'; modeId: string }
+  | { kind: 'board'; modeId: string; opponentType: 'human' | 'ai' };
+
 function App()
 {
     const phaserRef = useRef<IRefPhaserGame | null>(null);
-    const [modeId, setModeId] = useState<string | null>(null);
-    const [opponentType, setOpponentType] = useState<'human' | 'ai' | null>(null);
+    const [screen, setScreen] = useState<Screen>({ kind: 'menu' });
     const [snapshot, setSnapshot] = useState<HudSnapshot | null>(null);
 
     useEffect(() =>
@@ -31,20 +35,21 @@ function App()
     const startMode = (id: string) =>
     {
         setSnapshot(null);
-        setModeId(id);
+        setScreen({ kind: 'opponent-select', modeId: id });
     };
 
     const startOpponent = (type: 'human' | 'ai') =>
     {
         setSnapshot(null);
-        setOpponentType(type);
+        if (screen.kind === 'opponent-select') {
+            setScreen({ kind: 'board', modeId: screen.modeId, opponentType: type });
+        }
     };
 
     const toMenu = () =>
     {
         setSnapshot(null);
-        setModeId(null);
-        setOpponentType(null);
+        setScreen({ kind: 'menu' });
     };
 
     const restart = () =>
@@ -53,22 +58,19 @@ function App()
         board?.restartGame();
     };
 
-    if (modeId === null)
-    {
-        return <MainMenu onSelect={startMode} />;
+    switch (screen.kind) {
+        case 'menu':
+            return <MainMenu onSelect={startMode} />;
+        case 'opponent-select':
+            return <OpponentSelect onSelect={startOpponent} />;
+        case 'board':
+            return (
+                <>
+                    <PhaserGame ref={phaserRef} currentActiveScene={currentScene} modeId={screen.modeId} opponentType={screen.opponentType} />
+                    <Hud snapshot={snapshot} onRestart={restart} onMenu={toMenu} aiPlayer={screen.opponentType === 'ai' ? 2 : null} />
+                </>
+            );
     }
-
-    if (opponentType === null)
-    {
-        return <OpponentSelect onSelect={startOpponent} />;
-    }
-
-    return (
-        <>
-            <PhaserGame ref={phaserRef} currentActiveScene={currentScene} modeId={modeId} opponentType={opponentType} />
-            <Hud snapshot={snapshot} onRestart={restart} onMenu={toMenu} aiPlayer={opponentType === 'ai' ? 2 : null} />
-        </>
-    );
 }
 
 export default App
