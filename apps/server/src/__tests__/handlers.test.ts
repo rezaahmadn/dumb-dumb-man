@@ -19,6 +19,10 @@ function createMockSocket(id: string): MockSocket {
         join: (code: string) => {
             socket.rooms.add(code);
         },
+        to: (_code: string) => ({ emit: vi.fn() }),
+        leave: (code: string) => {
+            socket.rooms.delete(code);
+        },
     };
     return socket;
 }
@@ -156,7 +160,7 @@ describe('R1 handlers', () => {
         const socket = createMockSocket('test-4');
         const io = { to: vi.fn(() => ({ emit: vi.fn() })) };
         registerHandlers(io as any, socket as any);
-        
+
         const createHandler = (socket.on as any).mock.calls.find((c: any) => c[0] === 'room:create')[1];
         const createAck = vi.fn();
         createHandler({ modeId: 'well' }, createAck);
@@ -175,6 +179,34 @@ describe('R1 handlers', () => {
 
         expect(rejoinAck).toHaveBeenCalledWith(
             expect.objectContaining({ ok: true, modeId: 'well', yourSeat: 1 })
+        );
+    });
+
+    it('rejoin after grace expires cleanly fails', () => {
+        const socket = createMockSocket('test-5');
+        const io = { to: vi.fn(() => ({ emit: vi.fn() })) };
+        registerHandlers(io as any, socket as any);
+
+        const createHandler = (socket.on as any).mock.calls.find((c: any) => c[0] === 'room:create')[1];
+        const createAck = vi.fn();
+        createHandler({ modeId: 'well' }, createAck);
+        const { code, token } = createAck.mock.calls[0][0];
+
+        const disconnectHandler = (socket.on as any).mock.calls.find((c: any) => c[0] === 'disconnect')[1];
+        disconnectHandler();
+        expect(rooms.has(code)).toBe(true);
+
+        //  Advance past 60s grace window
+        vi.advanceTimersByTime(60001);
+        expect(rooms.has(code)).toBe(false);
+
+        //  Attempt rejoin after expiry
+        const rejoinHandler = (socket.on as any).mock.calls.find((c: any) => c[0] === 'room:rejoin')[1];
+        const rejoinAck = vi.fn();
+        rejoinHandler({ code, token }, rejoinAck);
+
+        expect(rejoinAck).toHaveBeenCalledWith(
+            expect.objectContaining({ ok: false, reason: 'room-not-found' })
         );
     });
 });

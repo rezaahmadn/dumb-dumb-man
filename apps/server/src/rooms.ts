@@ -15,6 +15,7 @@ export type Room = {
     socketSeats: Map<string, PlayerId>;
     tokens: Map<SessionToken, PlayerId>;
     graceTimer: NodeJS.Timeout | null;
+    rematchAccepted: Set<PlayerId>;
 };
 
 export const rooms = new Map<RoomCode, Room>();
@@ -45,6 +46,7 @@ export function createRoom(modeId: string): Room {
         socketSeats: new Map(),
         tokens: new Map(),
         graceTimer: null,
+        rematchAccepted: new Set(),
     };
 
     rooms.set(code, room);
@@ -68,12 +70,13 @@ export function addSocketToRoom(room: Room, socketId: string, seat: PlayerId, to
     }
 }
 
-export function removeSocketFromRoom(room: Room, socketId: string): void {
+export function removeSocketFromRoom(room: Room, socketId: string, onExpire?: (code: RoomCode) => void): void {
     room.socketSeats.delete(socketId);
     //  Arm grace timer: room auto-deletes after 60s if not rejoined
     if (room.socketSeats.size === 0) {
         room.graceTimer = setTimeout(() => {
             rooms.delete(room.code);
+            onExpire?.(room.code);
         }, 60000);
     }
 }

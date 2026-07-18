@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { getSocket, initSocket } from '../net/socket';
 import { probeServerHealth } from '../net/healthProbe';
 import type { CreateAck, JoinAck } from '@pebble/protocol';
+import type { PlayerId } from '@pebble/engine';
 
 interface OnlineLobbyProps {
     modeId: string;
     onCreated: (code: string, token: string) => void;
-    onJoined: (code: string, token: string) => void;
+    onJoined: (code: string, token: string, yourSeat: PlayerId) => void;
     onBack: () => void;
 }
 
@@ -67,7 +68,7 @@ export function OnlineLobby({ modeId, onCreated, onJoined, onBack }: OnlineLobby
         sock.emit('room:join', { code: roomCode.toUpperCase() as any }, (result: JoinAck) => {
             setLoading(false);
             if (result.ok) {
-                onJoined(result.code, result.token);
+                onJoined(result.code, result.token, result.yourSeat);
             } else {
                 setError(`Join failed: ${result.reason}`);
             }

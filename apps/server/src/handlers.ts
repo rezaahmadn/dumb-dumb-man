@@ -3,6 +3,7 @@ import { applyMoveForSeat } from './authority';
 import {
     addSocketToRoom,
     createRoom,
+    deleteRoom,
     generateSessionToken,
     getPlayerSeat,
     getRoom,
@@ -20,6 +21,7 @@ import type {
     RoomCode,
 } from '@pebble/protocol';
 import { MODES } from '@pebble/engine/modes';
+import { initialState } from '@pebble/engine';
 
 export function registerHandlers(
     io: Server<ClientToServerEvents, ServerToClientEvents>,
@@ -61,7 +63,7 @@ export function registerHandlers(
             for (const [sid, seat] of room.socketSeats) {
                 io.to(sid).emit('roll:result', { yourSeat: seat, modeId: room.modeId, state: room.state });
             }
-            const result: JoinAck = { ok: true, code, token };
+            const result: JoinAck = { ok: true, code, token, yourSeat: 2 };
             ack(result);
         } catch (err) {
             const result: JoinAck = { ok: false, reason: 'room-not-found' };
@@ -85,6 +87,7 @@ export function registerHandlers(
             }
             addSocketToRoom(room, socket.id, seat, token);
             socket.join(code);
+            socket.to(code).emit('opponent:reconnected');
             const result: RejoinAck = { ok: true, modeId: room.modeId, yourSeat: seat, state: room.state };
             ack(result);
         } catch (err) {
@@ -135,10 +138,32 @@ export function registerHandlers(
         if (code) {
             const room = getRoom(code);
             if (room) {
-                removeSocketFromRoom(room, socket.id);
+                socket.to(code).emit('room:closed', { reason: 'opponent-left' });
+                deleteRoom(code);
             }
             socket.leave(code);
         }
+    });
+
+    socket.on('rematch:accept', () => {
+        const code = Array.from(socket.rooms).find((r) => r !== socket.id) as RoomCode | undefined;
+        if (!code) return;
+        const room = getRoom(code);
+        if (!room) return;
+        const seat = getPlayerSeat(room, socket.id);
+        if (!seat) return;
+
+        room.rematchAccepted.add(seat);
+        if (room.rematchAccepted.size < 2) {
+            socket.to(code).emit('rematch:pending');
+            return;
+        }
+
+        const mode = MODES[room.modeId as keyof typeof MODES];
+        room.state = initialState(mode.engine, room.modeId);
+        rollForRoom(room);
+        room.rematchAccepted.clear();
+        io.to(code).emit('game:hydrate', { state: room.state });
     });
 
     socket.on('disconnect', () => {
@@ -146,7 +171,10 @@ export function registerHandlers(
         if (code) {
             const room = getRoom(code);
             if (room) {
-                removeSocketFromRoom(room, socket.id);
+                io.to(code).emit('opponent:disconnected', { graceMs: 60000 });
+                removeSocketFromRoom(room, socket.id, (expiredCode) => {
+                    io.to(expiredCode).emit('room:closed', { reason: 'grace-expired' });
+                });
             }
         }
     });

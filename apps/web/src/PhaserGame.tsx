@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useLayoutEffect, useRef } from 'react';
 import StartGame from './game/main';
 import { EventBus } from './game/EventBus';
+import type { PlayerId } from '@pebble/engine';
 
 export interface IRefPhaserGame
 {
@@ -12,10 +13,11 @@ interface IProps
 {
     currentActiveScene?: (scene_instance: Phaser.Scene) => void
     modeId?: string
-    opponentType?: 'human' | 'ai'
+    opponentType?: 'human' | 'ai' | 'online'
+    localPlayer?: PlayerId
 }
 
-export const PhaserGame = forwardRef<IRefPhaserGame, IProps>(function PhaserGame({ currentActiveScene, modeId, opponentType }, ref)
+export const PhaserGame = forwardRef<IRefPhaserGame, IProps>(function PhaserGame({ currentActiveScene, modeId, opponentType, localPlayer }, ref)
 {
     const game = useRef<Phaser.Game | null>(null!);
 
@@ -24,7 +26,7 @@ export const PhaserGame = forwardRef<IRefPhaserGame, IProps>(function PhaserGame
         if (game.current === null)
         {
 
-            game.current = StartGame("game-container", modeId, opponentType);
+            game.current = StartGame("game-container", modeId, opponentType, localPlayer);
 
             if (typeof ref === 'function')
             {

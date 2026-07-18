@@ -46,8 +46,17 @@ export type CreateAck =
     | { ok: true; code: RoomCode; token: SessionToken }
     | { ok: false; reason: 'server-error' };
 
+//  yourSeat is returned directly in the ack, not just via the 'roll:result'
+//  broadcast: a joiner's own client attaches its 'roll:result' listener only
+//  AFTER this ack resolves (see App.tsx's screen-transition-then-subscribe
+//  flow), but the server emits 'roll:result' to both sockets synchronously
+//  inside the same handler, before this ack is sent — so the joiner's own
+//  copy of that broadcast arrives before anything is listening for it and is
+//  permanently missed. The creator has no such race (their listener is
+//  already attached, waiting, since room creation) and still relies on the
+//  broadcast. Found via two-browser playtest, not by inspection.
 export type JoinAck =
-    | { ok: true; code: RoomCode; token: SessionToken }
+    | { ok: true; code: RoomCode; token: SessionToken; yourSeat: PlayerId }
     | { ok: false; reason: JoinFailure };
 
 export type RejoinAck =
