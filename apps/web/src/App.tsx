@@ -6,69 +6,280 @@ import { PhaserGame } from './PhaserGame';
 import { Hud } from './ui/Hud';
 import { MainMenu } from './ui/MainMenu';
 import { OpponentSelect } from './ui/OpponentSelect';
+import { OpponentStatus } from './ui/OpponentStatus';
+import { OnlineLobby } from './ui/OnlineLobby';
+import { RollScreen } from './ui/RollScreen';
+import { RejoinScreen } from './ui/RejoinScreen';
+import { getSocket, initSocket } from './net/socket';
+import type { SessionEnvelope, RejoinAck } from '@pebble/protocol';
+import type { PlayerId, GameState } from '@pebble/engine';
+
+type Screen =
+  | { kind: 'menu' }
+  | { kind: 'opponent-select'; modeId: string }
+  | { kind: 'lobby'; modeId: string }
+  | { kind: 'roll'; modeId: string; roomCode: string; token: string; yourSeat: PlayerId | null }
+  | { kind: 'board'; modeId: string; opponentType: 'human' | 'ai' }
+  | { kind: 'board'; modeId: string; opponentType: 'online'; localPlayer: PlayerId; roomCode: string; token: string }
+  | { kind: 'rejoining' }
+  | { kind: 'rejoin-failed' };
 
 function App()
 {
     const phaserRef = useRef<IRefPhaserGame | null>(null);
-    const [modeId, setModeId] = useState<string | null>(null);
-    const [opponentType, setOpponentType] = useState<'human' | 'ai' | null>(null);
+    const pendingHydrateState = useRef<GameState | null>(null);
+    const [screen, setScreen] = useState<Screen>({ kind: 'menu' });
     const [snapshot, setSnapshot] = useState<HudSnapshot | null>(null);
+    const [opponentConnected, setOpponentConnected] = useState(true);
+    const [roomClosedReason, setRoomClosedReason] = useState<string | null>(null);
+    const [rematchStatus, setRematchStatus] = useState<'idle' | 'waiting' | 'opponent-wants'>('idle');
+
+    const attemptRejoin = (envelope: SessionEnvelope) => {
+        const serverUrl = import.meta.env.VITE_SERVER_URL;
+        if (!serverUrl) {
+            localStorage.removeItem('pebble-session');
+            setScreen({ kind: 'menu' });
+            return;
+        }
+
+        let socket;
+        try {
+            socket = getSocket();
+        } catch {
+            socket = initSocket(serverUrl);
+        }
+
+        let settled = false;
+        const timeoutId = setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            setScreen({ kind: 'rejoin-failed' });
+        }, 3000);
+
+        socket.emit('room:rejoin', { code: envelope.code, token: envelope.token }, (ack: RejoinAck) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timeoutId);
+            if (ack.ok) {
+                pendingHydrateState.current = ack.state;
+                setScreen({ kind: 'board', modeId: ack.modeId, opponentType: 'online', localPlayer: ack.yourSeat, roomCode: envelope.code, token: envelope.token });
+            } else {
+                localStorage.removeItem('pebble-session');
+                setScreen({ kind: 'menu' });
+            }
+        });
+    };
+
+    useEffect(() => {
+        const raw = localStorage.getItem('pebble-session');
+        if (!raw) return;
+        let envelope: SessionEnvelope;
+        try {
+            envelope = JSON.parse(raw);
+        } catch {
+            localStorage.removeItem('pebble-session');
+            return;
+        }
+        setScreen({ kind: 'rejoining' });
+        attemptRejoin(envelope);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() =>
     {
-        EventBus.on('game-state-changed', setSnapshot);
+        const onSnapshot = (snap: HudSnapshot) => {
+            setSnapshot(snap);
+            if (snap.game.phase !== 'gameover') setRematchStatus('idle');
+        };
+        EventBus.on('game-state-changed', onSnapshot);
         return () =>
         {
             EventBus.removeListener('game-state-changed');
         };
     }, []);
 
-    const currentScene = (scene: Phaser.Scene) =>
+    useEffect(() =>
     {
-        setSnapshot((scene as BoardScene).getSnapshot());
+        const onConnection = ({ connected }: { connected: boolean }) => setOpponentConnected(connected);
+        const onClosed = ({ reason }: { reason: string }) => setRoomClosedReason(reason);
+        const onRematchPending = () => setRematchStatus('opponent-wants');
+        EventBus.on('opponent-connection-changed', onConnection);
+        EventBus.on('room-closed', onClosed);
+        EventBus.on('rematch-pending', onRematchPending);
+        return () =>
+        {
+            EventBus.removeListener('opponent-connection-changed');
+            EventBus.removeListener('room-closed');
+            EventBus.removeListener('rematch-pending');
+        };
+    }, []);
+
+    useEffect(() =>
+    {
+        if (screen.kind !== 'roll' || screen.yourSeat !== null) return;
+
+        const socket = getSocket();
+        const handleRollResult = ({ yourSeat }: { yourSeat: PlayerId }) =>
+        {
+            setScreen(prev => prev.kind === 'roll' ? { ...prev, yourSeat } : prev);
+        };
+
+        socket.on('roll:result', handleRollResult);
+        return () =>
+        {
+            socket.off('roll:result', handleRollResult);
+        };
+    }, [screen.kind]);
+
+    const currentScene = (scene: Phaser.Scene) => {
+        const board = scene as BoardScene;
+        if (pendingHydrateState.current) {
+            const state = pendingHydrateState.current;
+            pendingHydrateState.current = null;
+            board.hydrateState(state);
+            return;
+        }
+        setSnapshot(board.getSnapshot());
     };
 
     const startMode = (id: string) =>
     {
         setSnapshot(null);
-        setModeId(id);
+        setScreen({ kind: 'opponent-select', modeId: id });
     };
 
     const startOpponent = (type: 'human' | 'ai') =>
     {
         setSnapshot(null);
-        setOpponentType(type);
+        if (screen.kind === 'opponent-select') {
+            setScreen({ kind: 'board', modeId: screen.modeId, opponentType: type });
+        }
+    };
+
+    const startOnline = () =>
+    {
+        setSnapshot(null);
+        if (screen.kind === 'opponent-select') {
+            setScreen({ kind: 'lobby', modeId: screen.modeId });
+        }
+    };
+
+    const handleRoomEntered = (code: string, token: string, yourSeat: PlayerId | null = null) =>
+    {
+        if (screen.kind !== 'lobby') return;
+        const envelope: SessionEnvelope = { token, code, modeId: screen.modeId };
+        localStorage.setItem('pebble-session', JSON.stringify(envelope));
+        setScreen({ kind: 'roll', modeId: screen.modeId, roomCode: code, token, yourSeat });
+    };
+
+    const startOnlineBoard = () =>
+    {
+        setSnapshot(null);
+        setOpponentConnected(true);
+        setRoomClosedReason(null);
+        setRematchStatus('idle');
+        if (screen.kind === 'roll' && screen.yourSeat !== null) {
+            setScreen({ kind: 'board', modeId: screen.modeId, opponentType: 'online', localPlayer: screen.yourSeat, roomCode: screen.roomCode, token: screen.token });
+        }
     };
 
     const toMenu = () =>
     {
         setSnapshot(null);
-        setModeId(null);
-        setOpponentType(null);
+        setScreen({ kind: 'menu' });
     };
 
     const restart = () =>
     {
+        if (screen.kind === 'board' && screen.opponentType === 'online') {
+            getSocket().emit('rematch:accept');
+            setRematchStatus('waiting');
+            return;
+        }
         const board = phaserRef.current?.scene as BoardScene | undefined;
         board?.restartGame();
     };
 
-    if (modeId === null)
-    {
-        return <MainMenu onSelect={startMode} />;
-    }
+    const menu = () => {
+        if (screen.kind === 'board' && screen.opponentType === 'online') {
+            if (!window.confirm('Leave this game?')) return;
+            getSocket().emit('room:leave');
+            localStorage.removeItem('pebble-session');
+        }
+        toMenu();
+    };
 
-    if (opponentType === null)
-    {
-        return <OpponentSelect onSelect={startOpponent} />;
+    switch (screen.kind) {
+        case 'menu':
+            return <MainMenu onSelect={startMode} />;
+        case 'opponent-select':
+            return <OpponentSelect onSelect={startOpponent} onSelectOnline={startOnline} />;
+        case 'lobby':
+            return <OnlineLobby modeId={screen.modeId} onCreated={handleRoomEntered} onJoined={handleRoomEntered} onBack={() => setScreen({ kind: 'opponent-select', modeId: screen.modeId })} />;
+        case 'roll':
+            if (screen.yourSeat === null) {
+                return (
+                    <div style={{ padding: '40px', textAlign: 'center' }}>
+                        <h2>Waiting for opponent…</h2>
+                        <p>Room code: {screen.roomCode}</p>
+                    </div>
+                );
+            }
+            return <RollScreen yourSeat={screen.yourSeat} onReady={startOnlineBoard} />;
+        case 'board':
+            if (screen.opponentType === 'online') {
+                return (
+                    <>
+                        <PhaserGame ref={phaserRef} currentActiveScene={currentScene} modeId={screen.modeId} opponentType="online" localPlayer={screen.localPlayer} />
+                        <Hud snapshot={snapshot} onRestart={restart} onMenu={menu} aiPlayer={null} />
+                        <OpponentStatus connected={opponentConnected} gameClosed={roomClosedReason !== null} />
+                        {rematchStatus === 'waiting' && (
+                            <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#333', padding: '10px', color: 'white', textAlign: 'center' }}>
+                                Waiting for opponent to accept rematch…
+                            </div>
+                        )}
+                        {rematchStatus === 'opponent-wants' && (
+                            <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#333', padding: '10px', color: 'white', textAlign: 'center' }}>
+                                Opponent wants a rematch — click "Play again" to accept!
+                            </div>
+                        )}
+                    </>
+                );
+            }
+            return (
+                <>
+                    <PhaserGame ref={phaserRef} currentActiveScene={currentScene} modeId={screen.modeId} opponentType={screen.opponentType} />
+                    <Hud snapshot={snapshot} onRestart={restart} onMenu={menu} aiPlayer={screen.opponentType === 'ai' ? 2 : null} />
+                </>
+            );
+        case 'rejoining':
+            return (
+                <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <h2>Reconnecting…</h2>
+                </div>
+            );
+        case 'rejoin-failed':
+            return (
+                <RejoinScreen
+                    onRejoin={() => {
+                        const raw = localStorage.getItem('pebble-session');
+                        if (!raw) { setScreen({ kind: 'menu' }); return; }
+                        try {
+                            const envelope: SessionEnvelope = JSON.parse(raw);
+                            setScreen({ kind: 'rejoining' });
+                            attemptRejoin(envelope);
+                        } catch {
+                            localStorage.removeItem('pebble-session');
+                            setScreen({ kind: 'menu' });
+                        }
+                    }}
+                    onNewGame={() => {
+                        localStorage.removeItem('pebble-session');
+                        setScreen({ kind: 'menu' });
+                    }}
+                />
+            );
     }
-
-    return (
-        <>
-            <PhaserGame ref={phaserRef} currentActiveScene={currentScene} modeId={modeId} opponentType={opponentType} />
-            <Hud snapshot={snapshot} onRestart={restart} onMenu={toMenu} aiPlayer={opponentType === 'ai' ? 2 : null} />
-        </>
-    );
 }
 
 export default App

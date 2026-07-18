@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    //  ES2020 only, no DOM — same boundary as the engine. This package is
+    //  imported by BOTH a browser bundle and a Node process, so it must
+    //  assume neither.
+    "lib": ["ES2020"]
+  },
+  "include": ["src"]
+}

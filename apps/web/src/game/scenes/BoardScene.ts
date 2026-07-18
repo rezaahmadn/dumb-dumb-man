@@ -15,7 +15,8 @@ export interface HudSnapshot
 interface BoardSceneData
 {
     modeId?: string;
-    opponentType?: 'human' | 'ai';
+    opponentType?: 'human' | 'ai' | 'online';
+    localPlayer?: PlayerId;
 }
 
 //  Human is always player 1 (red), AI always player 2 (blue) — matches
@@ -31,18 +32,20 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
 export class BoardScene extends Scene
 {
     private mode!: GameModeDef;
-    private state!: GameState;
+    protected state!: GameState;
     private vertexPos: Record<VertexId, { x: number; y: number }> = {};
     private pebbleObjects: Partial<Record<VertexId, Phaser.GameObjects.Arc>> = {};
     private highlightGraphics!: Phaser.GameObjects.Graphics;
     private selected: VertexId | null = null;
     private legalDestinations: Set<VertexId> = new Set();
     private legalJumpDestinations: Set<VertexId> = new Set();
-    private opponentType: 'human' | 'ai' = 'human';
+    private opponentType: 'human' | 'ai' | 'online' = 'human';
+    protected localPlayer: PlayerId | null = null;
+    protected awaitingEcho = false;
 
-    constructor ()
+    constructor (key: string = 'BoardScene')
     {
-        super('BoardScene');
+        super(key);
     }
 
     init (data: BoardSceneData)
@@ -55,6 +58,14 @@ export class BoardScene extends Scene
         }
         this.mode = mode;
         this.opponentType = data.opponentType ?? 'human';
+        if (this.opponentType === 'online')
+        {
+            if (data.localPlayer === undefined)
+            {
+                throw new Error('BoardScene: opponentType "online" requires localPlayer');
+            }
+            this.localPlayer = data.localPlayer;
+        }
     }
 
     create ()
@@ -112,6 +123,30 @@ export class BoardScene extends Scene
         this.legalDestinations = new Set();
         this.renderHighlights();
         this.state = initialState(this.mode.engine, this.mode.id);
+        this.refreshDraggable();
+        EventBus.emit('game-state-changed', this.getSnapshot());
+    }
+
+    public hydrateState (state: GameState)
+    {
+        for (const key of Object.keys(this.pebbleObjects) as VertexId[])
+        {
+            this.pebbleObjects[key]?.destroy();
+        }
+        this.pebbleObjects = {};
+        this.selected = null;
+        this.legalDestinations = new Set();
+        this.legalJumpDestinations = new Set();
+        this.renderHighlights();
+        this.state = state;
+        for (const v of this.mode.engine.board.vertices)
+        {
+            const occupant = this.state.board[v.id];
+            if (occupant !== null)
+            {
+                this.spawnPebbleAt(v.id, occupant);
+            }
+        }
         this.refreshDraggable();
         EventBus.emit('game-state-changed', this.getSnapshot());
     }
@@ -217,7 +252,7 @@ export class BoardScene extends Scene
             return;
         }
 
-        if (this.opponentType === 'ai' && this.state.current === AI_PLAYER)
+        if (!this.isLocalTurn())
         {
             return;
         }
@@ -365,7 +400,7 @@ export class BoardScene extends Scene
     //  Must run BEFORE this.state is reassigned in applyAndSync: it reads
     //  this.state.current for the mover's color/identity, and for a 'move'
     //  it looks up the pebble object still sitting at `from`.
-    private syncPebbles (move: Move)
+    protected syncPebbles (move: Move)
     {
         const player = this.state.current;
         if (move.kind === 'place')
@@ -437,7 +472,7 @@ export class BoardScene extends Scene
     //  otherwise) — safe here because syncPebbles makes every pebble
     //  interactive at creation, unconditionally, before this can ever run
     //  against it.
-    private refreshDraggable ()
+    protected refreshDraggable ()
     {
         for (const key of Object.keys(this.pebbleObjects) as VertexId[])
         {
@@ -448,12 +483,25 @@ export class BoardScene extends Scene
             }
             const draggable = this.state.phase === 'movement'
                 && this.state.board[key] === this.state.current
-                && !(this.opponentType === 'ai' && this.state.current === AI_PLAYER);
+                && this.isLocalTurn();
             this.input.setDraggable(pebble, draggable);
         }
     }
 
-    private applyAndSync (move: Move)
+    //  Single source of truth for "can the local client act right now".
+    //  hotseat ('human'): always true — no gate existed before this phase,
+    //  and none is added. vs-AI: identical to the old inline check. online:
+    //  new — gated to the local seat's turn, and locked while awaitingEcho
+    //  (a move has been sent to the server but not yet echoed back).
+    private isLocalTurn (): boolean
+    {
+        if (this.awaitingEcho) return false;
+        if (this.opponentType === 'ai') return this.state.current !== AI_PLAYER;
+        if (this.opponentType === 'online') return this.localPlayer !== null && this.state.current === this.localPlayer;
+        return true;
+    }
+
+    protected applyAndSync (move: Move)
     {
         this.syncPebbles(move);
         this.state = applyMove(this.mode.engine, this.state, move);
