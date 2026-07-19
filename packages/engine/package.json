@@ -1,7 +1,7 @@
 {
   "name": "@pebble/engine",
   "description": "Pure game rules, board maths, AI and mode definitions. No phaser, no react, no DOM.",
-  "version": "1.1.0",
+  "version": "1.3.0",
   "private": true,
   "type": "module",
   "license": "MIT",
