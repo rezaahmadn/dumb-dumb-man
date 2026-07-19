@@ -40,6 +40,8 @@ jobs:
         run: pnpm test
 
       - name: Build
+        env:
+          VITE_SERVER_URL: ${{ vars.VITE_SERVER_URL }}
         run: pnpm build
 
       - name: Deploy to Netlify
