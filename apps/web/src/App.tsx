@@ -128,7 +128,6 @@ function App()
             //  when the server rolled Blue first. Stash it for currentScene's
             //  existing pendingHydrateState hand-off (same path Phase 10 rejoin
             //  uses) to correct it the moment the scene mounts.
-            console.info('[online] roll:result received', { yourSeat, current: state.current }); //  TEMP diagnostic
             pendingHydrateState.current = state;
             setScreen(prev => prev.kind === 'roll' ? { ...prev, yourSeat } : prev);
         };
@@ -142,7 +141,6 @@ function App()
 
     const currentScene = (scene: Phaser.Scene) => {
         const board = scene as BoardScene;
-        console.info('[online] currentScene fired', { pending: pendingHydrateState.current ? pendingHydrateState.current.current : null }); //  TEMP diagnostic
         if (pendingHydrateState.current) {
             const state = pendingHydrateState.current;
             pendingHydrateState.current = null;
@@ -174,11 +172,18 @@ function App()
         }
     };
 
-    const handleRoomEntered = (code: string, token: string, yourSeat: PlayerId | null = null) =>
+    const handleRoomEntered = (code: string, token: string, yourSeat: PlayerId | null = null, state: GameState | null = null) =>
     {
         if (screen.kind !== 'lobby') return;
         const envelope: SessionEnvelope = { token, code, modeId: screen.modeId };
         localStorage.setItem('pebble-session', JSON.stringify(envelope));
+        //  A joiner's yourSeat comes from the join ack (see JoinAck's doc
+        //  comment), which satisfies the 'roll:result' effect's guard
+        //  immediately — that listener, where the rolled state normally gets
+        //  stashed for hydration, never attaches for a joiner. Stash it here
+        //  instead when the caller already has it (joiner path only; a
+        //  creator has no roll yet at this point and passes nothing).
+        if (state) pendingHydrateState.current = state;
         setScreen({ kind: 'roll', modeId: screen.modeId, roomCode: code, token, yourSeat });
     };
 

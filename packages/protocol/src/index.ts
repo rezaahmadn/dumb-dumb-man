@@ -46,17 +46,26 @@ export type CreateAck =
     | { ok: true; code: RoomCode; token: SessionToken }
     | { ok: false; reason: 'server-error' };
 
-//  yourSeat is returned directly in the ack, not just via the 'roll:result'
-//  broadcast: a joiner's own client attaches its 'roll:result' listener only
-//  AFTER this ack resolves (see App.tsx's screen-transition-then-subscribe
-//  flow), but the server emits 'roll:result' to both sockets synchronously
-//  inside the same handler, before this ack is sent — so the joiner's own
-//  copy of that broadcast arrives before anything is listening for it and is
-//  permanently missed. The creator has no such race (their listener is
-//  already attached, waiting, since room creation) and still relies on the
-//  broadcast. Found via two-browser playtest, not by inspection.
+//  yourSeat AND state are returned directly in the ack, not just via the
+//  'roll:result' broadcast: a joiner's own client attaches its 'roll:result'
+//  listener only AFTER this ack resolves (see App.tsx's
+//  screen-transition-then-subscribe flow), but the server emits
+//  'roll:result' to both sockets synchronously inside the same handler,
+//  before this ack is sent — so the joiner's own copy of that broadcast
+//  arrives before anything is listening for it and is permanently missed.
+//  Consequence for `state` specifically: since the joiner's client now
+//  learns yourSeat from THIS ack rather than the event, its 'roll:result'
+//  effect guard (`yourSeat !== null`) is satisfied immediately and the
+//  listener body — where the rolled state gets stashed for hydration on
+//  board mount — never even attaches. Without state here too, the joiner's
+//  board silently renders BoardScene's default fresh initialState() (Red
+//  moves first) regardless of what the server actually rolled. The creator
+//  has no such race (their listener is already attached, waiting, since
+//  room creation) and still relies on the broadcast for both fields.
+//  Found via two-browser playtest, not by inspection — twice, since the
+//  first pass only caught the yourSeat half of this.
 export type JoinAck =
-    | { ok: true; code: RoomCode; token: SessionToken; yourSeat: PlayerId }
+    | { ok: true; code: RoomCode; token: SessionToken; yourSeat: PlayerId; state: GameState }
     | { ok: false; reason: JoinFailure };
 
 export type RejoinAck =

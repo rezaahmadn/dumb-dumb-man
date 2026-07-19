@@ -27,7 +27,6 @@ const config: Phaser.Types.Core.GameConfig = {
 const StartGame = (parent: string, modeId = 'well', opponentType: 'human' | 'ai' | 'online' = 'human', localPlayer?: PlayerId) => {
 
     const game = new Game({ ...config, parent });
-    (globalThis as any).__pebbleGame = game; //  TEMP: prod diagnostic, revert with the follow-up fix commit
     game.registry.set('modeId', modeId);
     game.registry.set('opponentType', opponentType);
     if (opponentType === 'online')
