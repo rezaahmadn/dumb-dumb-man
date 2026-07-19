@@ -119,8 +119,16 @@ function App()
         if (screen.kind !== 'roll' || screen.yourSeat !== null) return;
 
         const socket = getSocket();
-        const handleRollResult = ({ yourSeat }: { yourSeat: PlayerId }) =>
+        const handleRollResult = ({ yourSeat, state }: { yourSeat: PlayerId; state: GameState }) =>
         {
+            //  The roll decides who moves first, server-side — BoardScene's own
+            //  create() always seeds a fresh local initialState() (hardcoded
+            //  current: 1) regardless, so without this the freshly-mounted
+            //  board silently ignores the roll and shows Red as active even
+            //  when the server rolled Blue first. Stash it for currentScene's
+            //  existing pendingHydrateState hand-off (same path Phase 10 rejoin
+            //  uses) to correct it the moment the scene mounts.
+            pendingHydrateState.current = state;
             setScreen(prev => prev.kind === 'roll' ? { ...prev, yourSeat } : prev);
         };
 
