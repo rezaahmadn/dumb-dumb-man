@@ -9,11 +9,15 @@ interface RejoinScreenProps {
 
 export function RejoinScreen({ onRejoin, onNewGame }: RejoinScreenProps) {
     return (
-        <div style={{ padding: '20px', textAlign: 'center' }}>
-            <h2>Connection Lost</h2>
-            <p>Resume game within 60 seconds</p>
-            <button onClick={onRejoin}>Rejoin</button>
-            <button onClick={onNewGame}>New Game</button>
+        <div id="menu-layer">
+            <div id="menu-box">
+                <h1 className="menu-title">Connection Lost</h1>
+                <div className="online-panel">
+                    <p className="online-subtitle">Resume your game within 60 seconds</p>
+                    <button className="menu-mode-button" onClick={onRejoin}>Rejoin</button>
+                    <button className="online-back" onClick={onNewGame}>New Game</button>
+                </div>
+            </div>
         </div>
     );
 }

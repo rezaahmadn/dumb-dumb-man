@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { PlayerId } from '@pebble/engine';
+import { PLAYER_COLOR_CSS } from '../game/render/theme';
 
 interface RollScreenProps {
     yourSeat: PlayerId;
@@ -31,13 +32,22 @@ export function RollScreen({ yourSeat, onReady }: RollScreenProps) {
         };
     }, [realColor]);
 
+    const pillColor = displayedColor === 'Red' ? PLAYER_COLOR_CSS[1] : PLAYER_COLOR_CSS[2];
+
     return (
-        <div style={{ padding: '40px', textAlign: 'center' }}>
-            <h2>Room Joined</h2>
-            <p>You are: <strong>{displayedColor}</strong></p>
-            <button onClick={onReady} disabled={!animationComplete}>
-                {animationComplete ? 'Start Game' : 'Revealing…'}
-            </button>
+        <div id="menu-layer">
+            <div id="menu-box">
+                <h1 className="menu-title">Room Joined</h1>
+                <div className="online-panel">
+                    <p className="online-subtitle">You play as</p>
+                    <div className="roll-color" style={{ background: pillColor }}>
+                        {displayedColor}
+                    </div>
+                    <button className="menu-mode-button" onClick={onReady} disabled={!animationComplete}>
+                        {animationComplete ? 'Start Game' : 'Revealing…'}
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }

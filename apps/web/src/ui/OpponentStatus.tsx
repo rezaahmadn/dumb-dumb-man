@@ -10,10 +10,10 @@ interface OpponentStatusProps {
 
 export function OpponentStatus({ connected, gameClosed }: OpponentStatusProps) {
     if (gameClosed) {
-        return <div style={{ position: 'fixed', top: 0, left: 0, right: 0, background: 'red', padding: '10px', color: 'white' }}>Game ended - opponent left</div>;
+        return <div className="net-banner net-banner-top net-banner-error">Game ended — opponent left</div>;
     }
     if (!connected) {
-        return <div style={{ position: 'fixed', top: 0, left: 0, right: 0, background: 'orange', padding: '10px', color: 'white' }}>Opponent disconnected - waiting...</div>;
+        return <div className="net-banner net-banner-top net-banner-warn">Opponent disconnected — waiting to reconnect…</div>;
     }
     return null;
 }

@@ -234,9 +234,16 @@ function App()
         case 'roll':
             if (screen.yourSeat === null) {
                 return (
-                    <div style={{ padding: '40px', textAlign: 'center' }}>
-                        <h2>Waiting for opponent…</h2>
-                        <p>Room code: {screen.roomCode}</p>
+                    <div id="menu-layer">
+                        <div id="menu-box">
+                            <h1 className="menu-title">Waiting…</h1>
+                            <div className="online-panel">
+                                <p className="online-subtitle">Share this room code</p>
+                                <div className="online-code">{screen.roomCode}</div>
+                                <div className="online-spinner" />
+                                <p className="online-hint">Waiting for an opponent to join</p>
+                            </div>
+                        </div>
                     </div>
                 );
             }
@@ -249,13 +256,13 @@ function App()
                         <Hud snapshot={snapshot} onRestart={restart} onMenu={menu} aiPlayer={null} />
                         <OpponentStatus connected={opponentConnected} gameClosed={roomClosedReason !== null} />
                         {rematchStatus === 'waiting' && (
-                            <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#333', padding: '10px', color: 'white', textAlign: 'center' }}>
+                            <div className="net-banner net-banner-bottom net-banner-info">
                                 Waiting for opponent to accept rematch…
                             </div>
                         )}
                         {rematchStatus === 'opponent-wants' && (
-                            <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#333', padding: '10px', color: 'white', textAlign: 'center' }}>
-                                Opponent wants a rematch — click "Play again" to accept!
+                            <div className="net-banner net-banner-bottom net-banner-info">
+                                Opponent wants a rematch — tap "Play again" to accept!
                             </div>
                         )}
                     </>
@@ -269,8 +276,11 @@ function App()
             );
         case 'rejoining':
             return (
-                <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <h2>Reconnecting…</h2>
+                <div id="menu-layer">
+                    <div id="menu-box">
+                        <h1 className="menu-title">Reconnecting…</h1>
+                        <div className="online-spinner" />
+                    </div>
                 </div>
             );
         case 'rejoin-failed':

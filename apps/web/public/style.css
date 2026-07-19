@@ -159,7 +159,168 @@ body,
     cursor: pointer;
 }
 
-.menu-mode-button:hover {
+.menu-mode-button:hover:not(:disabled) {
     background: #e8e2d0;
     color: #111418;
 }
+
+.menu-mode-button:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+/* ---------- Online / network screens ---------- */
+/* Reuse #menu-layer / #menu-box / .menu-title / .menu-mode-button so every
+   online screen shares the game's 9:16 pillar and cream-on-dark language. */
+
+.online-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+    width: 74%;
+}
+
+.online-subtitle {
+    text-align: center;
+    font-size: 1.05rem;
+    color: rgba(232, 226, 208, 0.7);
+}
+
+.online-hint {
+    text-align: center;
+    font-size: 0.95rem;
+    color: rgba(232, 226, 208, 0.55);
+}
+
+.online-input {
+    width: 100%;
+    /* Without border-box the 16px padding + 2px border add on top of the
+       100% width, making the field overflow wider than the buttons above it. */
+    box-sizing: border-box;
+    padding: 16px;
+    font-size: 1.4rem;
+    text-align: center;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    background: rgba(232, 226, 208, 0.06);
+    color: #e8e2d0;
+    border: 2px solid rgba(232, 226, 208, 0.4);
+    border-radius: 10px;
+    outline: none;
+}
+
+.online-input::placeholder {
+    color: rgba(232, 226, 208, 0.35);
+    letter-spacing: normal;
+    text-transform: none;
+    font-size: 1rem;
+}
+
+.online-input:focus {
+    border-color: #e8e2d0;
+}
+
+.online-join {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.online-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: rgba(232, 226, 208, 0.4);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+}
+
+.online-divider::before,
+.online-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(232, 226, 208, 0.2);
+}
+
+.online-error {
+    text-align: center;
+    color: #ff6b6b;
+    font-size: 0.95rem;
+}
+
+.online-code {
+    text-align: center;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 3rem;
+    font-weight: 700;
+    letter-spacing: 0.4em;
+    /* letter-spacing adds trailing space on the right; pull the glyphs back
+       by the same amount so the code reads optically centred. */
+    text-indent: 0.4em;
+    padding: 16px;
+    color: #e8e2d0;
+    background: rgba(232, 226, 208, 0.06);
+    border: 2px dashed rgba(232, 226, 208, 0.3);
+    border-radius: 12px;
+}
+
+.online-back {
+    background: transparent;
+    color: rgba(232, 226, 208, 0.7);
+    border: none;
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 8px;
+}
+
+.online-back:hover {
+    color: #e8e2d0;
+}
+
+.roll-color {
+    text-align: center;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #ffffff;
+    padding: 22px;
+    border-radius: 12px;
+    letter-spacing: 0.05em;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+    transition: background 0.15s ease;
+}
+
+.online-spinner {
+    width: 44px;
+    height: 44px;
+    margin: 8px auto;
+    border: 4px solid rgba(232, 226, 208, 0.2);
+    border-top-color: #e8e2d0;
+    border-radius: 50%;
+    animation: online-spin 0.9s linear infinite;
+}
+
+@keyframes online-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Fixed network banners: status pinned top, rematch prompts pinned bottom. */
+.net-banner {
+    position: fixed;
+    left: 0;
+    right: 0;
+    padding: 12px 16px;
+    text-align: center;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #ffffff;
+    z-index: 10;
+}
+
+.net-banner-top { top: 0; }
+.net-banner-bottom { bottom: 0; }
+.net-banner-error { background: #c62828; }
+.net-banner-warn { background: #ef6c00; }
+.net-banner-info { background: #1e88e5; }

@@ -76,26 +76,32 @@ export function OnlineLobby({ modeId, onCreated, onJoined, onBack }: OnlineLobby
     };
 
     return (
-        <div style={{ padding: '20px', textAlign: 'center' }}>
-            <h2>Online Lobby</h2>
-            <button onClick={createRoom} disabled={loading}>
-                {loading ? 'Creating...' : 'Create Room'}
-            </button>
-            <div style={{ margin: '20px 0' }}>
-                <input
-                    type="text"
-                    placeholder="Enter room code"
-                    value={roomCode}
-                    onChange={(e) => setRoomCode(e.target.value)}
-                    disabled={loading}
-                    maxLength={4}
-                />
-                <button onClick={joinRoom} disabled={loading}>
-                    {loading ? 'Joining...' : 'Join Room'}
-                </button>
+        <div id="menu-layer">
+            <div id="menu-box">
+                <h1 className="menu-title">Online</h1>
+                <div className="online-panel">
+                    <button className="menu-mode-button" onClick={createRoom} disabled={loading}>
+                        {loading ? 'Creating…' : 'Create Room'}
+                    </button>
+                    <div className="online-divider"><span>or</span></div>
+                    <div className="online-join">
+                        <input
+                            className="online-input"
+                            type="text"
+                            placeholder="Enter room code"
+                            value={roomCode}
+                            onChange={(e) => setRoomCode(e.target.value)}
+                            disabled={loading}
+                            maxLength={4}
+                        />
+                        <button className="menu-mode-button" onClick={joinRoom} disabled={loading}>
+                            {loading ? 'Joining…' : 'Join Room'}
+                        </button>
+                    </div>
+                    {error && <p className="online-error">{error}</p>}
+                </div>
+                <button className="online-back" onClick={onBack}>← Back</button>
             </div>
-            {error && <p style={{ color: 'red' }}>{error}</p>}
-            <button onClick={onBack}>Back</button>
         </div>
     );
 }
