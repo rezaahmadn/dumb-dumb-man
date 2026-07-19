@@ -128,6 +128,7 @@ function App()
             //  when the server rolled Blue first. Stash it for currentScene's
             //  existing pendingHydrateState hand-off (same path Phase 10 rejoin
             //  uses) to correct it the moment the scene mounts.
+            console.info('[online] roll:result received', { yourSeat, current: state.current }); //  TEMP diagnostic
             pendingHydrateState.current = state;
             setScreen(prev => prev.kind === 'roll' ? { ...prev, yourSeat } : prev);
         };
@@ -141,6 +142,7 @@ function App()
 
     const currentScene = (scene: Phaser.Scene) => {
         const board = scene as BoardScene;
+        console.info('[online] currentScene fired', { pending: pendingHydrateState.current ? pendingHydrateState.current.current : null }); //  TEMP diagnostic
         if (pendingHydrateState.current) {
             const state = pendingHydrateState.current;
             pendingHydrateState.current = null;
