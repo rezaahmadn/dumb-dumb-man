@@ -1,6 +1,6 @@
 # Dumb Dumb Man
 
-A two-player strategy game built with Phaser 4, React 19, and TypeScript. Features two distinct game modes with different mechanics and AI opponents.
+A two-player strategy game built with Phaser 4, React 19, and TypeScript. Features three distinct game modes with different mechanics, AI opponents, and real-time online multiplayer over an authoritative socket.io server.
 
 > **Note**: This project exists to test ECC (Extended Claude Code) workflows — PRD generation, planning, implementation, code review, and PR automation — end-to-end on a real codebase.
 
@@ -23,11 +23,20 @@ A two-player strategy game built with Phaser 4, React 19, and TypeScript. Featur
 - **Movement**: Single-step hops along adjacent vertices (no sliding)
 - **Win condition**: Complete a line of 3 aligned pebbles
 
+### Dumb Dumb Man (Clash Mode)
+- **Players**: 2 (human vs human, human vs AI, or online)
+- **Board**: Traditional Sixteen Soldiers board — a 5×5 Alquerque grid with triangular wings top and bottom
+- **Goal**: Eliminate all of your opponent's pebbles
+- **Pieces**: 16 pebbles per player, pre-placed with the centre row empty
+- **Movement**: Draughts-style — step along lines or jump to capture, with chained captures; a side flying (moving any distance) once reduced to 3 or fewer pebbles
+- **Win condition**: Opponent has no pebbles left
+
 ## Features
 
-- **Dual-mode engine**: Extensible architecture supporting multiple game types
-- **Smart AI**: Exact retrograde solver (not depth-capped)
-- **Hotseat & AI modes**: Play locally against a friend or challenge the computer
+- **Multi-mode engine**: Extensible architecture supporting multiple game types
+- **Online multiplayer**: Real-time 2-player play in every mode over an authoritative socket.io server — create/join rooms by code, server-validated moves, and rejoin after a disconnect
+- **Smart AI**: Exact retrograde solver (small boards) plus a greedy capture-preferring AI for the 16v16 clash mode
+- **Hotseat, AI & online modes**: Play locally against a friend, challenge the computer, or match up online
 - **Fast development**: Hot-reloading with Vite + React
 - **Fully typed**: 100% TypeScript
 
@@ -66,6 +75,8 @@ This template has been updated for:
 
 To run a command against one package only, use a filter: `pnpm --filter @pebble/engine test`.
 
+To exercise online multiplayer locally, run the server alongside the web app with `pnpm --filter @pebble/server dev` (listens on `:3001`), and point the web app at it with `VITE_SERVER_URL=http://localhost:3001` in `apps/web/.env.local`.
+
 ## Writing Code
 
 After cloning the repo, run `pnpm install` from the repo root. Then start the local development server with `pnpm dev`.
@@ -76,7 +87,7 @@ Once the server is running you can edit any file under `apps/web/src` or `packag
 
 ## Project Structure
 
-A pnpm monorepo. The split exists so that game rules can be shared with a future authoritative multiplayer server: `packages/engine` is pure TypeScript with no phaser, react or DOM dependency, which is what makes it importable from Node.
+A pnpm monorepo. The split exists so that game rules are shared with the authoritative multiplayer server: `packages/engine` is pure TypeScript with no phaser, react or DOM dependency, which is what makes it importable from Node — `apps/server` imports it as the single source of game rules.
 
 | Path                          | Description                                                                 |
 |-------------------------------|-----------------------------------------------------------------------------|
@@ -85,6 +96,8 @@ A pnpm monorepo. The split exists so that game rules can be shared with a future
 | `packages/engine/src/ai.ts`   | Retrograde solver (small boards: well, morris).                             |
 | `packages/engine/src/aiGreedy.ts` | Greedy capture-preferring AI (used by the 16v16 clash mode).            |
 | `packages/engine/src/modes/`  | Board geometry + `MODES` registry. Exposed as `@pebble/engine/modes`.       |
+| `packages/protocol`           | Shared socket.io event/payload types for the client and server.             |
+| `apps/server`                 | **Authoritative socket.io server.** Rooms, matchmaking, and move validation, importing `@pebble/engine` for the rules. |
 | `apps/web`                    | The Phaser 4 + React client.                                               |
 | `apps/web/index.html`         | A basic HTML page to contain the game.                                     |
 | `apps/web/src/main.tsx`       | The main **React** entry point. This bootstraps the React application.      |
