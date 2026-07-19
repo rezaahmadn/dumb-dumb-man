@@ -63,7 +63,7 @@ export function registerHandlers(
             for (const [sid, seat] of room.socketSeats) {
                 io.to(sid).emit('roll:result', { yourSeat: seat, modeId: room.modeId, state: room.state });
             }
-            const result: JoinAck = { ok: true, code, token, yourSeat: 2 };
+            const result: JoinAck = { ok: true, code, token, yourSeat: 2, state: room.state };
             ack(result);
         } catch (err) {
             const result: JoinAck = { ok: false, reason: 'room-not-found' };

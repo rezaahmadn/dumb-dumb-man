@@ -172,11 +172,18 @@ function App()
         }
     };
 
-    const handleRoomEntered = (code: string, token: string, yourSeat: PlayerId | null = null) =>
+    const handleRoomEntered = (code: string, token: string, yourSeat: PlayerId | null = null, state: GameState | null = null) =>
     {
         if (screen.kind !== 'lobby') return;
         const envelope: SessionEnvelope = { token, code, modeId: screen.modeId };
         localStorage.setItem('pebble-session', JSON.stringify(envelope));
+        //  A joiner's yourSeat comes from the join ack (see JoinAck's doc
+        //  comment), which satisfies the 'roll:result' effect's guard
+        //  immediately — that listener, where the rolled state normally gets
+        //  stashed for hydration, never attaches for a joiner. Stash it here
+        //  instead when the caller already has it (joiner path only; a
+        //  creator has no roll yet at this point and passes nothing).
+        if (state) pendingHydrateState.current = state;
         setScreen({ kind: 'roll', modeId: screen.modeId, roomCode: code, token, yourSeat });
     };
 
