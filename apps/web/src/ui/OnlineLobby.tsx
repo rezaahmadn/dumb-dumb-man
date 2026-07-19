@@ -65,10 +65,12 @@ export function OnlineLobby({ modeId, onCreated, onJoined, onBack }: OnlineLobby
             setLoading(false);
             return;
         }
-        sock.emit('room:join', { code: roomCode.toUpperCase() as any }, (result: JoinAck) => {
+        sock.emit('room:join', { code: roomCode.toUpperCase() as any, modeId }, (result: JoinAck) => {
             setLoading(false);
             if (result.ok) {
                 onJoined(result.code, result.token, result.yourSeat, result.state);
+            } else if (result.reason === 'mode-mismatch') {
+                setError('That room is for a different game mode');
             } else {
                 setError(`Join failed: ${result.reason}`);
             }

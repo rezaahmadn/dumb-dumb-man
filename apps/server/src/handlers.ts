@@ -41,11 +41,16 @@ export function registerHandlers(
         }
     });
 
-    socket.on('room:join', ({ code }, ack) => {
+    socket.on('room:join', ({ code, modeId }, ack) => {
         try {
             const room = getRoom(code);
             if (!room) {
                 const result: JoinAck = { ok: false, reason: 'room-not-found' };
+                ack(result);
+                return;
+            }
+            if (room.modeId !== modeId) {
+                const result: JoinAck = { ok: false, reason: 'mode-mismatch' };
                 ack(result);
                 return;
             }

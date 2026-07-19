@@ -23,7 +23,7 @@ export interface HealthResponse {
     ok: true;
 }
 
-export type JoinFailure = 'bad-code' | 'room-not-found' | 'room-full';
+export type JoinFailure = 'bad-code' | 'room-not-found' | 'room-full' | 'mode-mismatch';
 export type RejoinFailure = 'bad-code' | 'room-not-found' | 'bad-token';
 export type MoveRejection =
     | 'room-not-found'
@@ -76,7 +76,7 @@ export type MoveAck = { ok: true } | { ok: false; reason: MoveRejection };
 
 export interface ClientToServerEvents {
     'room:create': (payload: { modeId: string }, ack: (result: CreateAck) => void) => void;
-    'room:join': (payload: { code: RoomCode }, ack: (result: JoinAck) => void) => void;
+    'room:join': (payload: { code: RoomCode; modeId: string }, ack: (result: JoinAck) => void) => void;
     'room:rejoin': (
         payload: { code: RoomCode; token: SessionToken },
         ack: (result: RejoinAck) => void

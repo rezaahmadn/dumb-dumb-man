@@ -59,9 +59,31 @@ describe('R1 handlers', () => {
         const joinHandler = (socket.on as any).mock.calls.find((c: any) => c[0] === 'room:join')[1];
         const ack = vi.fn();
 
-        joinHandler({ code: 'XXXX' }, ack);
+        joinHandler({ code: 'XXXX', modeId: 'well' }, ack);
 
         expect(ack).toHaveBeenCalledWith(expect.objectContaining({ ok: false, reason: 'room-not-found' }));
+    });
+
+    it('room:join rejects a joiner requesting a different mode than the room', () => {
+        const socket1 = createMockSocket('test-1');
+        const io = { to: vi.fn(() => ({ emit: vi.fn() })) };
+        registerHandlers(io as any, socket1 as any);
+
+        const createHandler = (socket1.on as any).mock.calls.find((c: any) => c[0] === 'room:create')[1];
+        const createAck = vi.fn();
+        createHandler({ modeId: 'well' }, createAck);
+        const { code } = createAck.mock.calls[0][0];
+
+        const socket2 = createMockSocket('test-2');
+        registerHandlers(io as any, socket2 as any);
+        const joinHandler = (socket2.on as any).mock.calls.find((c: any) => c[0] === 'room:join')[1];
+        const joinAck = vi.fn();
+        joinHandler({ code, modeId: 'morris' }, joinAck);
+
+        expect(joinAck).toHaveBeenCalledWith(expect.objectContaining({ ok: false, reason: 'mode-mismatch' }));
+        //  Rejected joiner must not occupy seat 2 — the room stays open for
+        //  the right mode's joiner.
+        expect(rooms.get(code)!.socketSeats.size).toBe(1);
     });
 
     it('room:join rejects third joiner', () => {
@@ -78,14 +100,14 @@ describe('R1 handlers', () => {
         registerHandlers(io as any, socket2 as any);
         const joinHandler2 = (socket2.on as any).mock.calls.find((c: any) => c[0] === 'room:join')[1];
         const joinAck2 = vi.fn();
-        joinHandler2({ code }, joinAck2);
+        joinHandler2({ code, modeId: 'well' }, joinAck2);
         expect(joinAck2).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
 
         const socket3 = createMockSocket('test-3');
         registerHandlers(io as any, socket3 as any);
         const joinHandler3 = (socket3.on as any).mock.calls.find((c: any) => c[0] === 'room:join')[1];
         const joinAck3 = vi.fn();
-        joinHandler3({ code }, joinAck3);
+        joinHandler3({ code, modeId: 'well' }, joinAck3);
         expect(joinAck3).toHaveBeenCalledWith(expect.objectContaining({ ok: false, reason: 'room-full' }));
     });
 
@@ -125,7 +147,7 @@ describe('R1 handlers', () => {
         registerHandlers(io as any, socket2 as any);
         const joinHandler2 = (socket2.on as any).mock.calls.find((c: any) => c[0] === 'room:join')[1];
         const joinAck2 = vi.fn();
-        joinHandler2({ code }, joinAck2);
+        joinHandler2({ code, modeId: 'well' }, joinAck2);
         socket2.rooms.add(code);
 
         const room = rooms.get(code);
