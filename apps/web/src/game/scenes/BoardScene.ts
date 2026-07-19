@@ -42,6 +42,12 @@ export class BoardScene extends Scene
     private opponentType: 'human' | 'ai' | 'online' = 'human';
     protected localPlayer: PlayerId | null = null;
     protected awaitingEcho = false;
+    //  Online blue (player 2) sees the board point-reflected about its own
+    //  centre so their own pebbles sit on the near (bottom) edge — the same
+    //  vantage red gets for free. Pure render transform: engine state, vertex
+    //  ids, taps and move logic are all orientation-agnostic.
+    private flipped = false;
+    private boardCenter = { x: 0, y: 0 };
 
     constructor (key: string = 'BoardScene')
     {
@@ -65,15 +71,33 @@ export class BoardScene extends Scene
                 throw new Error('BoardScene: opponentType "online" requires localPlayer');
             }
             this.localPlayer = data.localPlayer;
+            this.flipped = data.localPlayer === 2;
         }
+    }
+
+    //  Point-reflect a board coord about the board centre when flipped (blue's
+    //  view); identity otherwise. Every on-board position funnels through here
+    //  so a single toggle reorients the whole scene.
+    private tx (x: number, y: number): { x: number; y: number }
+    {
+        if (!this.flipped) return { x, y };
+        return { x: 2 * this.boardCenter.x - x, y: 2 * this.boardCenter.y - y };
     }
 
     create ()
     {
+        const vertices = this.mode.engine.board.vertices;
+        const xs = vertices.map((v) => v.x);
+        const ys = vertices.map((v) => v.y);
+        this.boardCenter = {
+            x: (Math.min(...xs) + Math.max(...xs)) / 2,
+            y: (Math.min(...ys) + Math.max(...ys)) / 2
+        };
+
         this.vertexPos = {};
-        for (const v of this.mode.engine.board.vertices)
+        for (const v of vertices)
         {
-            this.vertexPos[v.id] = { x: v.x, y: v.y };
+            this.vertexPos[v.id] = this.tx(v.x, v.y);
         }
 
         this.drawBoard();
@@ -166,13 +190,17 @@ export class BoardScene extends Scene
             }
             else
             {
+                //  A point reflection rotates the arc's centre AND both sweep
+                //  angles by 180°, preserving the same start→end direction.
+                const c = this.tx(stroke.cx, stroke.cy);
+                const off = this.flipped ? 180 : 0;
                 g.beginPath();
                 g.arc(
-                    stroke.cx,
-                    stroke.cy,
+                    c.x,
+                    c.y,
                     stroke.radius,
-                    degToRad(stroke.startDeg),
-                    degToRad(stroke.endDeg),
+                    degToRad(stroke.startDeg + off),
+                    degToRad(stroke.endDeg + off),
                     false
                 );
                 g.strokePath();
@@ -181,8 +209,9 @@ export class BoardScene extends Scene
 
         for (const v of this.mode.engine.board.vertices)
         {
+            const p = this.vertexPos[v.id];
             g.fillStyle(THEME.vertexDot);
-            g.fillCircle(v.x, v.y, THEME.vertexRadius);
+            g.fillCircle(p.x, p.y, THEME.vertexRadius);
         }
     }
 
@@ -193,7 +222,8 @@ export class BoardScene extends Scene
     {
         for (const v of this.mode.engine.board.vertices)
         {
-            const label = this.add.text(v.x + 16, v.y - 16, v.id, {
+            const p = this.vertexPos[v.id];
+            const label = this.add.text(p.x + 16, p.y - 16, v.id, {
                 fontSize: '16px',
                 color: '#888888'
             });
@@ -205,7 +235,8 @@ export class BoardScene extends Scene
     {
         for (const v of this.mode.engine.board.vertices)
         {
-            const hit = this.add.circle(v.x, v.y, THEME.tapRadius, 0xffffff, 0);
+            const p = this.vertexPos[v.id];
+            const hit = this.add.circle(p.x, p.y, THEME.tapRadius, 0xffffff, 0);
             //  Bare setInteractive() fails on non-texture Shape objects, and
             //  hit-area coords are LOCAL (origin at the object's top-left),
             //  not world coords. For a centered-origin circle of radius r,
