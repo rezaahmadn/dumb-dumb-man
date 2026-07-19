@@ -228,7 +228,7 @@ function App()
         case 'menu':
             return <MainMenu onSelect={startMode} />;
         case 'opponent-select':
-            return <OpponentSelect onSelect={startOpponent} onSelectOnline={startOnline} />;
+            return <OpponentSelect modeId={screen.modeId} onSelect={startOpponent} onSelectOnline={startOnline} />;
         case 'lobby':
             return <OnlineLobby modeId={screen.modeId} onCreated={handleRoomEntered} onJoined={handleRoomEntered} onBack={() => setScreen({ kind: 'opponent-select', modeId: screen.modeId })} />;
         case 'roll':
