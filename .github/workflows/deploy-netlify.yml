@@ -41,7 +41,7 @@ jobs:
 
       - name: Build
         env:
-          VITE_SERVER_URL: ${{ vars.VITE_SERVER_URL }}
+          VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
         run: pnpm build
 
       - name: Deploy to Netlify
