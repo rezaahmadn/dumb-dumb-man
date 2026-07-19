@@ -1,5 +1,5 @@
 import type { GameState, Move } from '@pebble/engine';
-import type { MoveAck } from '@pebble/protocol';
+import type { MoveAck, RejoinAck, SessionEnvelope } from '@pebble/protocol';
 import { BoardScene } from './BoardScene';
 import { EventBus } from '../EventBus';
 import { getSocket } from '../../net/socket';
@@ -47,6 +47,40 @@ export class OnlineBoardScene extends BoardScene {
         this.awaitingEcho = false;
     }
 
+    //  socket.io-client reconnects the transport on its own (reconnection:true
+    //  in net/socket.ts) after a drop, but the SERVER only knows a socket as a
+    //  room member via socket.join(code) — reconnecting issues a brand-new
+    //  socket.id that was never joined to the room. Left alone, any
+    //  'game:update' broadcast sent while we were offline is lost for good
+    //  (socket.io does not queue events for a disconnected socket), and the
+    //  reconnected socket can't even send moves afterwards (server's 'move'
+    //  handler resolves the room via socket.rooms, which is now empty) —
+    //  exactly the "stuck until I refresh" report, since a manual reload was
+    //  the only thing that re-ran the localStorage-driven room:rejoin flow.
+    //  Manager-level 'reconnect' (not Socket-level 'connect', which also
+    //  fires on the very first connect) lets us redo that same rejoin
+    //  silently the instant the transport comes back.
+    private resyncAfterReconnect (): void
+    {
+        const raw = localStorage.getItem('pebble-session');
+        if (!raw) return;
+        let envelope: SessionEnvelope;
+        try {
+            envelope = JSON.parse(raw);
+        } catch {
+            return;
+        }
+        getSocket().emit('room:rejoin', { code: envelope.code, token: envelope.token }, (ack: RejoinAck) => {
+            if (ack.ok) {
+                //  The rejoin's state is authoritative as of right now — any
+                //  outstanding awaitingEcho lock from a move whose ack was
+                //  lost in the drop is moot once we've hydrated past it.
+                this.awaitingEcho = false;
+                this.hydrateState(ack.state);
+            }
+        });
+    }
+
     public attachServerListeners (): void
     {
         const socket = getSocket();
@@ -60,6 +94,7 @@ export class OnlineBoardScene extends BoardScene {
         socket.on('opponent:reconnected', () => { EventBus.emit('opponent-connection-changed', { connected: true }); });
         socket.on('rematch:pending', () => { EventBus.emit('rematch-pending'); });
         socket.on('room:closed', ({ reason }: { reason: string }) => { EventBus.emit('room-closed', { reason }); });
+        socket.io.on('reconnect', () => this.resyncAfterReconnect());
     }
 
     public detachServerListeners (): void
@@ -71,5 +106,6 @@ export class OnlineBoardScene extends BoardScene {
         socket.off('opponent:reconnected');
         socket.off('rematch:pending');
         socket.off('room:closed');
+        socket.io.off('reconnect');
     }
 }
